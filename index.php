@@ -8,7 +8,8 @@ $func = $data['callback_query'] ? $data['callback_query'] : $data['message'];
 
 // Важные константы
 define('TOKEN', '6029265853:AAFd8vC7iBY2RpOcr9w_o89UsPswCH9GZfo');
-
+define('BOTID', '6029265853');
+$lastBotMessage = GetLastBotMessage($data);
 // Записываем сообщение пользователя
 $message = mb_strtolower(($func['text'] ? $func['text'] : $func['data']),'utf-8');
 
@@ -2231,16 +2232,17 @@ if (isset($data['callback_query'])) {
         }else if (trim($prof[4]) == $word) {
             mysqli_query($con, "UPDATE `Interests` SET interest5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
-            foreach ($ar as $key => $value1) {
-                if (trim($value1) == $word) {
+            foreach ($ar as $key => $value) {
+                if (trim($value) == $word) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
-                        $arr .= trim($value1);
+                        $arr .= $value;
                     }else{
-                        $arr .= ", " . trim($value1);
+                        $arr .= ", " . trim($value);
                     }
                 }
             }
@@ -2302,9 +2304,9 @@ if (isset($data['callback_query'])) {
                 }
                 if ($key == 5 and !empty($value)) {
                     $skills6 = explode("," , $value);
-                    foreach ($skills6 as $key => $value) {
-                        $msgText3 .= trim($value) . "\n";
-                        array_push($arrTo6, $value);
+                    foreach ($skills6 as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($arrTo6, trim($value1));
                     }
                 }
             }
@@ -2315,7 +2317,7 @@ if (isset($data['callback_query'])) {
                 }else{
                     if (!empty($value)) {
                         foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1135")));
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
                         }
                     }
                 }
@@ -2363,10 +2365,12 @@ if (isset($data['callback_query'])) {
             mysqli_query($con, "UPDATE `Skills` SET s5 = '' WHERE userID = ".$user." ");
             mysqli_query($con, "UPDATE `Skills` SET lvl5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
             foreach ($ar as $key => $value) {
-                if ($value == $word) {
+                $prof = explode(")", $value);
+                if (trim($prof[1]) == trim($word)) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
@@ -2410,7 +2414,7 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие скилы
         else{
-            $arrTo6 = array();
+            $profArrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills')));
@@ -2436,7 +2440,7 @@ if (isset($data['callback_query'])) {
                     foreach ($skills6 as $key => $value) {
                         $skill6 = explode(")", $value);
                         $msgText3 .= trim($skill6[1]) . "\n";
-                        array_push($arrTo6, $skill6[1]);
+                        array_push($profArrTo6, $skill6[1]);
                     }
                 }
             }
@@ -2446,8 +2450,8 @@ if (isset($data['callback_query'])) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        foreach ($profArrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
                         }
                     }
                 }
@@ -2489,16 +2493,17 @@ if (isset($data['callback_query'])) {
         }else if ($prof[4] == $word) {
             mysqli_query($con, "UPDATE `Needs` SET n5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
             foreach ($ar as $key => $value) {
-                if ($value == $word) {
+                if (trim($value) == $word) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
                         $arr .= $value;
                     }else{
-                        $arr .= ", " . $value;
+                        $arr .= ", " . trim($value);
                     }
                 }
             }
@@ -2537,7 +2542,7 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие ценности
         else{
-            $arrTo6 = array();
+            $needs6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds')));
@@ -2559,10 +2564,10 @@ if (isset($data['callback_query'])) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $needs6 = explode("," , $value);
-                    foreach ($needs6 as $key => $value) {
-                        $msgText3 .= trim($value) . "\n";
-                        array_push($arrTo6, $value);
+                    $arr = explode("," , $value);
+                    foreach ($arr as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($needs6, trim($value1));
                     }
                 }
             }
@@ -2572,8 +2577,8 @@ if (isset($data['callback_query'])) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1134")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1134")));
+                        foreach ($needs6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1134")));
                         }
                     }
                 }
@@ -2953,7 +2958,9 @@ if (isset($data['callback_query'])) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -4880,7 +4887,9 @@ if (isset($data['callback_query'])) {
             foreach ($usersCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -5378,6 +5387,9 @@ if (isset($data['callback_query'])) {
                 'inline_keyboard'=>[
                     [
                         ['text' => 'Как заработать монеты?', 'callback_data' => 'howToMakeCoins']
+                    ],
+                    [
+                        ['text' => 'Потратить монеты', 'callback_data' => 'shop']
                     ],
                     [
                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -6098,7 +6110,9 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 foreach ($skillCheck as $key => $value) {
                     mysqli_fetch_array($value);
                     foreach ($value as $key => $value) {
-                        if ($value != $user) {
+                        $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                        $userData = mysqli_fetch_array($userTable);
+                        if ($value != $user && $userData['isPrivate'] == 0) {
                             if ($userNames == "") {
                                 $userNames = $value;
                                 $counter += 1;
@@ -7100,14 +7114,13 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);*/
 
-        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$send_data['message_id']."' WHERE userID = ".$user." ");
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$data['callback_query']['message']."' WHERE userID = ".$user." ");
        
-        $response = [
+        $args1 = [
             'chat_id' => $user,
-            'message_id' => $data['callback_query']['message']['message_id'],
-            'photo' => curl_file_create("../tgBot/BotPic/post_101.jpg"),
-            'protect_content' => true,
-            'reply_markup'=>json_encode([
+            'message_id' => $lastBotMessage['message_id'],
+            'caption' => " ",
+            'reply_markup'=> json_encode([
                 'inline_keyboard'=>[
                     [
                         ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -7115,9 +7128,36 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 ]            
             ])
         ];
-        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/editMessageCaption');  
         curl_setopt($ch, CURLOPT_POST, 1);  
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $args1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+
+        // Меняем картинку
+        $args2 = [
+            'chat_id' => $user,
+            'message_id' => $lastBotMessage['message_id'],
+            'media' => json_encode([
+                'type' => 'photo',
+                'media' => 'attach://post_101.jpg'
+                ]),
+            'post_101.jpg' => new CURLFile("../tgbot/BotPics/post_101.jpg"),
+            'reply_markup'=> json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                    ]
+                ]            
+            ])
+        ];
+        
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/editMessageMedia');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $args2);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_exec($ch);
@@ -9252,7 +9292,9 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -9754,6 +9796,24 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                         // Пушим новый интерес в БД
                         mysqli_query ($con, "UPDATE `Interests` SET interest6 = '".$pints."' WHERE userID = ".$user." ");
                     }
+                    $method = 'editMessageText';
+                    $send_data = [
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                                ]
+                            ]
+                        ]
+                    ];
+                    
                 }
             } 
         }
@@ -9862,7 +9922,9 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -11560,6 +11622,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
             $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
             $needs = mysqli_fetch_row($needsCheck);
 
+            $needsArrTo6 = array();
             $msgText2 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds')));
@@ -11581,13 +11644,23 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText2 .= trim($value) . "\n";
+                    $arr = explode(",",$value);
+                    foreach($arr as $key => $value1){
+                        $msgText2 .= trim($value1) . "\n";
+                        array_push($needsArrTo6, $value1);
+                    }
                 }
             }
 
             foreach ($needs as $key => $value) {
-                if (!empty($value)) {
+                if (!empty($value) and $key < 5) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value."1134")));
+                }else {
+                    if(!empty($value)){
+                        foreach($needsArrTo6 as $key => $value1){
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)."1134")));
+                        }
+                    }
                 }
             }
             
@@ -11888,6 +11961,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
             $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
             $interests = mysqli_fetch_row($interestsCheck);
 
+            $interestsArrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests')));
@@ -11909,15 +11983,26 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText3 .= trim($value) . "\n";
+                    $arr = explode("," , $value);
+                    foreach ($arr as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($interestsArrTo6, $value1);
+                    }
                 }
             }
 
             foreach ($interests as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value." 1135")));
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1135")));
+                }else {
+                    if(!empty($value)){
+                        foreach ($interestsArrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
+                        }
+                    }
                 }
             }
+
 
             // Удаляем сообщение с меню
             $send_data['message_id'] = $data['callback_query']['message']['message_id'];
@@ -13231,8 +13316,8 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 }
                 if ($key == 5 and !empty($value)) {
                     $skills6 = explode("," , $value);
-                    foreach ($skills6 as $key => $value) {
-                        $skill6 = explode(")", $value);
+                    foreach ($skills6 as $key => $value1) {
+                        $skill6 = explode(")", $value1);
                         $msgText3 .= trim($skill6[1]) . "\n";
                         array_push($arrTo6, $skill6[1]);
                     }
@@ -13244,8 +13329,8 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        foreach ($arrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
                         }
                     }
                 }
@@ -23956,6 +24041,83 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 ]
             ];
             break;
+        case 'shop':
+            // Удаляем старое сообщение
+            $user = $func['from']['id'];
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $user = $func['from']['id'];
+
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' "));
+
+            if ($userData['coins'] == "") {
+                $coins = 0;
+            }else{
+                $coins = $userData['coins'];
+            }
+
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            $method = 'sendMessage';
+
+            $send_data = [
+                'text' => "🛒 Магазин:\n У вас на счету:".$coins." монет",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Приватный аккаунт: ' . $privateAccountPrice. " монет", 'callback_data' => 'makeAccountPrivate'],
+                        ], 
+                        [
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]                    
+                    ]
+                ]
+            ];
+            break;
+            
+        case 'makeAccountPrivate':
+            $user = $func['from']['id'];
+            
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins`,`isPrivate` FROM `MainInfo` WHERE userID='".$user."' "));
+            
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            if ($userData['coins'] == "") {
+                $currentCoins = 0;
+            }else{
+                $currentCoins = $userData['coins'];
+            }
+            
+            if($userData['isPrivate'] == 1){
+                $buyResult = "Ваш аккаунт уже приватный.";
+            }else if($privateAccountPrice > $currentCoins){
+                $buyResult = "Похоже,вам не хватает монет!";
+            }
+            else {
+                $newCoinsAmount = $currentCoins - $privateAccountPrice;
+                mysqli_query($con, "UPDATE `MainInfo` SET `isPrivate` = 1, `coins` = " . $newCoinsAmount . " WHERE userID = '".$user."' ");
+                $buyResult = "Теперь, ваш аккаунт приватный!";
+            }
+
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => $buyResult,
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '👈 Потратить монеты', 'callback_data' => 'shop'],
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]            
+                    ]
+                ]
+            ];
+            break; 
 
         default:
             $method = 'editMessageText';
@@ -23993,5 +24155,14 @@ function sendTelegram($method, $data, $headers = [])
     curl_close($curl);
     return (json_decode($result, 1) ? json_decode($result, 1) : $result);
 }
-
+function GetLastBotMessage($data_var){
+    if($data_var['message']){
+        if($data_var['message']['from']['id'] == BOTID){
+            return $data_var['message'];
+        }   
+    }else if($data_var['callback_query']['message']['from']['id'] == BOTID){
+        return $data_var['callback_query']['message'];
+    }   
+    return $lastBotMessage;
+}
 ?>
