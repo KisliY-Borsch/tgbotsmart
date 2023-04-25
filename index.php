@@ -5380,6 +5380,9 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Как заработать монеты?', 'callback_data' => 'howToMakeCoins']
                     ],
                     [
+                        ['text' => 'Потратить монеты', 'callback_data' => 'shop']
+                    ],
+                    [
                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                     ]
                 ]
@@ -23956,6 +23959,83 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 ]
             ];
             break;
+        case 'shop':
+            // Удаляем старое сообщение
+            $user = $func['from']['id'];
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $user = $func['from']['id'];
+
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' "));
+
+            if ($userData['coins'] == "") {
+                $coins = 0;
+            }else{
+                $coins = $userData['coins'];
+            }
+
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            $method = 'sendMessage';
+
+            $send_data = [
+                'text' => "🛒 Магазин:\n У вас на счету:".$coins." монет",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Приватный аккаунт: ' . $privateAccountPrice. " монет", 'callback_data' => 'makeAccountPrivate'],
+                        ], 
+                        [
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]                    
+                    ]
+                ]
+            ];
+            break;
+            
+        case 'makeAccountPrivate':
+            $user = $func['from']['id'];
+            
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins`,`isPrivate` FROM `MainInfo` WHERE userID='".$user."' "));
+            
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            if ($userData['coins'] == "") {
+                $currentCoins = 0;
+            }else{
+                $currentCoins = $userData['coins'];
+            }
+            
+            if($userData['isPrivate'] == 1){
+                $buyResult = "Ваш аккаунт уже приватный.";
+            }else if($privateAccountPrice > $currentCoins){
+                $buyResult = "Похоже,вам не хватает монет!";
+            }
+            else {
+                $newCoinsAmount = $currentCoins - $privateAccountPrice;
+                mysqli_query($con, "UPDATE `MainInfo` SET `isPrivate` = 1, `coins` = " . $newCoinsAmount . " WHERE userID = '".$user."' ");
+                $buyResult = "Теперь, ваш аккаунт приватный!";
+            }
+
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => $buyResult,
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '👈 Потратить монеты', 'callback_data' => 'shop'],
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]            
+                    ]
+                ]
+            ];
+            break; 
 
         default:
             $method = 'editMessageText';
