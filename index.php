@@ -478,7 +478,6 @@ if ($data['callback_query']['data'] == "businessInts 1") {
 
         $intsQuery = mysqli_query($con,"SELECT `name`,`callbackData` FROM 'InterestsList' WHERE categoryName='businessInts'");
         $finalButtonsArray = GenerateButtonsPage($intsQuery,' tni',1,99);
-
         array_push($finalButtonsArray,array(
             array('text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst')
         ));
