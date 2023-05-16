@@ -18,7 +18,7 @@ include('bd.php');
 if (strpos($message, '/start') !== false) {
     // Проверяем есть ли такой пользователь по id пользователя
     $user = $func['from']['id'];
-    $chatCheck = mysqli_query ($con, "SELECT `userID` FROM `BOT` WHERE userID='".$user."' ");
+    $chatCheck = mysqli_query ($con, "SELECT `userID` FROM `MainInfo` WHERE userID='".$user."' ");
     $chatID = mysqli_fetch_array($chatCheck);
 
     // Удаление сообщения "/start"
@@ -28,20 +28,6 @@ if (strpos($message, '/start') !== false) {
 
     // Если такого пользователя в БД нет, то запрашиваем номер телефона для регистрации
     if (empty($chatID)) {
-        /*$method = 'sendMessage';
-        $send_data = [
-            'text' => '👋 Привет! Мы еще не знакомы, но ты можешь поделиться со мной своим номером, чтоб я открыл тебе доступ к меню',
-            'reply_markup' => [
-                resize_keyboard =>true,
-                one_time_keyboard => true,
-                'keyboard' => [
-                    [
-                        ['text' => '📱 Поделиться номером', request_contact => true]
-                    ]
-                ]
-            ]
-        ];*/
-
         $method = 'sendMessage';
         $send_data = [
             'text' => '👋 Приветствуем тебя в нашем SMART пространстве. Выбери кого ты ищешь:',
@@ -68,13 +54,23 @@ if (strpos($message, '/start') !== false) {
 
         # Пушим первую инфу пользователя в БД #
         // Создаем реферальную ссылку
-        $refURL = 'https://t.me/SmartContactApp_bot?start=' . $func['from']['id'];
+        $refURL = 'https://t.me/SMARTSYNCBOT?start=' . $func['from']['id'];
 
         $tgUserName = "@" . $func['from']['username'];
-        mysqli_query ($con, "INSERT INTO `BOT` (`tgUserName`, `userID`, `userInvite`, `regDate`) VALUES ('".$tgUserName."','".$func['from']['id']."', '".$refURL."', NOW())");
-
-        // Добавляем пользователя в таблицу с наградами
-        mysqli_query ($con, "INSERT INTO `userRewards` (`userID`, `SkillsReward`, `InterestsReward`, `NeedsReward`) VALUES ('".$func['from']['id']."', 0 , 0, 0) ");
+            // Добавляем пользователя в ОСНОВНУЮ таблицу
+        mysqli_query ($con, "INSERT INTO `MainInfo` (`userID`, `tgUserName`, `name`, `surname`, `inviteLink`, `regDate`) VALUES ('".$func['from']['id']."','".$tgUserName."','".$func['from']['first_name']."', '".$func['from']['last_name']."', '".$refURL."', NOW())");
+            // Добавляем пользователя в таблицу ИНТЕРЕСОВ
+        mysqli_query ($con, "INSERT INTO `Interests` (`userID`) VALUES ('".$func['from']['id']."' )");
+            // Добавляем пользователя в таблицу ЦЕННОСТЕЙ
+        mysqli_query ($con, "INSERT INTO `Needs` (`userID`) VALUES ('".$func['from']['id']."' )");
+            // Добавляем пользователя в таблицу НАВЫКОВ
+        mysqli_query ($con, "INSERT INTO `Skills` (`userID`) VALUES ('".$func['from']['id']."' )");
+            // Добавляем пользователя в таблицу СОЦИАЛЬНЫХ СЕТЕЙ
+        mysqli_query ($con, "INSERT INTO `Socials` (`userID`) VALUES ('".$func['from']['id']."' )");
+            // Добавляем пользователя в таблицу ТРЕКИНГА
+        mysqli_query ($con, "INSERT INTO `TrackingMenu` (`userID`) VALUES ('".$func['from']['id']."' )");
+            // Добавляем пользователя в таблицу с наградами
+        mysqli_query ($con, "INSERT INTO `userRewards` (`userID`, `tgUserName`, `SkillsReward`, `InterestsReward`, `NeedsReward`) VALUES ('".$func['from']['id']."', '".$tgUserName."', 0, 0, 0) ");
 
         // Проверяем реферальный переход и если это он, то...
         if (strpos($message, ' ') !== false){
@@ -85,20 +81,20 @@ if (strpos($message, '/start') !== false) {
             $id = $msgArray[1];
 
             // Сначала получаем число рефералов и монет из БД
-            $insert = mysqli_query ($con, "SELECT `userCoins`, `userReferals` FROM `BOT` WHERE userID='".$id."' ");
+            $insert = mysqli_query ($con, "SELECT `coins`, `referals` FROM `MainInfo` WHERE userID='".$id."' ");
             $user = mysqli_fetch_array($insert);
 
             // Прибавляем плюшки к кол-ву монет и увеличиваем кол-во рефералов
-            $coins = $user['userCoins'] + 1000;
-            $referals = $user['userReferals'] + 1;
+            $coins = $user['coins'] + 1000;
+            $referals = $user['referals'] + 1;
 
             // Пушим в БД новые значения
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userReferals = ".$referals.", userCoins = ".$coins." WHERE userID=".$id." ");
+            $updateDB = mysqli_query ($con, "UPDATE `MainInfo` SET referals = ".$referals.", coins = ".$coins." WHERE userID=".$id." ");
 
             ## РАБОТА С ПРИГЛАШЕННЫМ ##
             // Пушим в БД новые значения(id пригласившего)
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET myInviter = ".$id." WHERE userID=".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `MainInfo` SET inviter = ".$id." WHERE userID=".$user." ");
 
         }
     }
@@ -107,7 +103,7 @@ if (strpos($message, '/start') !== false) {
     else{
         // Выводим человека из всех меню
         $user = $func['from']['id'];
-        mysqli_query($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID = '".$user."' ");
+        mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = '".$user."' ");
 
         $method = 'sendMessage';
         $send_data = [
@@ -183,16 +179,16 @@ if ($data['callback_query']['data'] == "1chFirst") {
 
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
     // Вывод интересов пользователя
-    $interests = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
+    $interests = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
     $ui = mysqli_fetch_array($interests);
 
     // Переменная для вывода в сообщение
     $msgArray = "";
 
-    if (empty($ui['userInterests'])) {
+    if (empty($ui['interest1'])) {
         $method = 'editMessageText';
         $send_data = [
             'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nВыбери категорию:",
@@ -217,26 +213,21 @@ if ($data['callback_query']['data'] == "1chFirst") {
         $send_data['message_id'] = $func['message']['message_id'];
         sendTelegram($method, $send_data);
     }else{
-        // Записываем интересы в массив
-        $IntArray = explode(",", $ui['userInterests']);
-
-        // Перебираем массив с интересами для правильного вывода
-        foreach ($IntArray as $key => $value) {
-            if ($key == 0) {
-                $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-            }
-            if ($key == 1) {
-                $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-            }
-            if ($key == 2) {
-                $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-            }
-            if ($key == 3) {
-                $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-            }
-            if ($key == 4) {
-                $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-            }    
+        // Выводим интересы в правильном виде
+        if (!empty($ui['interest1'])) {
+            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ui['interest1'] . "\n";
+        }
+        if (!empty($ui['interest2'])) {
+            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ui['interest2'] . "\n";
+        }    
+        if (!empty($ui['interest3'])) {
+            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ui['interest3'] . "\n";
+        }
+        if (!empty($ui['interest4'])) {
+            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ui['interest4'] . "\n";
+        }
+        if (!empty($ui['interest5'])) {
+            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
         $method = 'editMessageText';
         $send_data = [
@@ -268,12 +259,16 @@ if ($data['callback_query']['data'] == "1chFirst") {
 if ($data['callback_query']['data'] == "1 Развлечения") {
     $user = $func['from']['id'];
     // Вывод интересов пользователя
-    $interests = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
+    $interests = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
     $ui = mysqli_fetch_array($interests);
 
-    $method = 'editMessageText';
+    // Переменная для вывода в сообщение
+    $msgArray = "";
+
+    if (empty($ui['interest1'])) {
+        $method = 'editMessageText';
         $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $ui['userInterests'],
+            'text' => "Выберите интерес:",
             'reply_markup' => [
                 'inline_keyboard' => [
                     [
@@ -312,172 +307,439 @@ if ($data['callback_query']['data'] == "1 Развлечения") {
                 ]
             ]
         ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }else{
+        // Выводим интересы в правильном виде
+        if (!empty($ui['interest1'])) {
+            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ui['interest1'] . "\n";
+        }
+        if (!empty($ui['interest2'])) {
+            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ui['interest2'] . "\n";
+        }    
+        if (!empty($ui['interest3'])) {
+            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ui['interest3'] . "\n";
+        }
+        if (!empty($ui['interest4'])) {
+            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ui['interest4'] . "\n";
+        }
+        if (!empty($ui['interest5'])) {
+            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
+        }
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Пранки', 'callback_data' => 'Пранки tni']  
+                    ],
+                    [
+                        ['text' => 'Челенджы', 'callback_data' => 'Челенджы tni']  
+                    ],
+                    [
+                        ['text' => 'Настольные игры', 'callback_data' => 'Настольные игры tni']  
+                    ],
+                    [
+                        ['text' => 'Трансформационные игры', 'callback_data' => 'Трансформационные игры tni']  
+                    ],
+                    [
+                        ['text' => 'Кино', 'callback_data' => 'Кино tni']  
+                    ],
+                    [
+                        ['text' => 'Театр', 'callback_data' => 'Театр tni']  
+                    ],
+                    [
+                        ['text' => 'Бильярд', 'callback_data' => 'Бильярд tni']  
+                    ],
+                    [
+                        ['text' => 'Съемка роликов', 'callback_data' => 'Съемка роликов tni']  
+                    ],
+                    [
+                        ['text' => 'Боулинг', 'callback_data' => 'Боулинг tni']  
+                    ],
+                    [
+                        ['text' => 'Следующая страница 👉', 'callback_data' => '2 Развлечения']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }    
     return;
 }
 if ($data['callback_query']['data'] == "2 Развлечения") {
-        $user = $func['from']['id'];
+    $user = $func['from']['id'];
     // Вывод интересов пользователя
-    $interests = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
+    $interests = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
     $ui = mysqli_fetch_array($interests);
 
-    $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $ui['userInterests'],
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Кафе', 'callback_data' => 'Кафе tni']  
-                ],
-                [
-                    ['text' => 'Бар', 'callback_data' => 'Бар tni']  
-                ],
-                [
-                    ['text' => 'Ресторан', 'callback_data' => 'Ресторан tni']  
-                ],
-                [
-                    ['text' => 'Рисование', 'callback_data' => 'Рисование tni']  
-                ],
-                [
-                    ['text' => 'Шитье', 'callback_data' => 'Шитье tni']  
-                ],
-                [
-                    ['text' => 'Ганчарство', 'callback_data' => 'Ганчарство tni']  
-                ],
-                [
-                    ['text' => '👈 Прошлая страница', 'callback_data' => '1 Развлечения']  
-                ],
-                [
-                    ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
-                ]
+    // Переменная для вывода в сообщение
+    $msgArray = "";
 
+    if (empty($ui['interest1'])) {
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "Выберите интерес:",
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Кафе', 'callback_data' => 'Кафе tni']  
+                    ],
+                    [
+                        ['text' => 'Бар', 'callback_data' => 'Бар tni']  
+                    ],
+                    [
+                        ['text' => 'Ресторан', 'callback_data' => 'Ресторан tni']  
+                    ],
+                    [
+                        ['text' => 'Рисование', 'callback_data' => 'Рисование tni']  
+                    ],
+                    [
+                        ['text' => 'Шитье', 'callback_data' => 'Шитье tni']  
+                    ],
+                    [
+                        ['text' => 'Ганчарство', 'callback_data' => 'Ганчарство tni']  
+                    ],
+                    [
+                        ['text' => '👈 Прошлая страница', 'callback_data' => '1 Развлечения']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
+
+                ]
             ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }else{
+        // Выводим интересы в правильном виде
+        if (!empty($ui['interest1'])) {
+            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ui['interest1'] . "\n";
+        }
+        if (!empty($ui['interest2'])) {
+            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ui['interest2'] . "\n";
+        }    
+        if (!empty($ui['interest3'])) {
+            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ui['interest3'] . "\n";
+        }
+        if (!empty($ui['interest4'])) {
+            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ui['interest4'] . "\n";
+        }
+        if (!empty($ui['interest5'])) {
+            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
+        }
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Кафе', 'callback_data' => 'Кафе tni']  
+                    ],
+                    [
+                        ['text' => 'Бар', 'callback_data' => 'Бар tni']  
+                    ],
+                    [
+                        ['text' => 'Ресторан', 'callback_data' => 'Ресторан tni']  
+                    ],
+                    [
+                        ['text' => 'Рисование', 'callback_data' => 'Рисование tni']  
+                    ],
+                    [
+                        ['text' => 'Шитье', 'callback_data' => 'Шитье tni']  
+                    ],
+                    [
+                        ['text' => 'Ганчарство', 'callback_data' => 'Ганчарство tni']  
+                    ],
+                    [
+                        ['text' => '👈 Прошлая страница', 'callback_data' => '1 Развлечения']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
+
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }    
     return;
 }
 if ($data['callback_query']['data'] == "1 Бизнес") {
-        $user = $func['from']['id'];
+    $user = $func['from']['id'];
     // Вывод интересов пользователя
-    $interests = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
+    $interests = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
     $ui = mysqli_fetch_array($interests);
 
-    $method = 'editMessageText';
+    // Переменная для вывода в сообщение
+    $msgArray = "";
+
+    if (empty($ui['interest1'])) {
+        $method = 'editMessageText';
         $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $ui['userInterests'],
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Нетворкинг', 'callback_data' => 'Нетворкинг tni']  
-                ],
-                [
-                    ['text' => 'Мастермайнд', 'callback_data' => 'Мастермайнд tni']  
-                ],
-                [
-                    ['text' => 'Форум', 'callback_data' => 'Форум tni']  
-                ],
-                [
-                    ['text' => 'Митинг', 'callback_data' => 'Митинг tni']  
-                ],
-                [
-                    ['text' => 'Дебаты', 'callback_data' => 'Дебаты tni']  
-                ],
-                [
-                    ['text' => 'Тренинг', 'callback_data' => 'Тренинг tni']  
-                ],
-                [
-                    ['text' => 'Мастер-класс', 'callback_data' => 'Мастер-класс tni']  
-                ],
-                [
-                    ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+            'text' => "Выберите интерес:",
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Нетворкинг', 'callback_data' => 'Нетворкинг tni']  
+                    ],
+                    [
+                        ['text' => 'Мастермайнд', 'callback_data' => 'Мастермайнд tni']  
+                    ],
+                    [
+                        ['text' => 'Форум', 'callback_data' => 'Форум tni']  
+                    ],
+                    [
+                        ['text' => 'Митинг', 'callback_data' => 'Митинг tni']  
+                    ],
+                    [
+                        ['text' => 'Дебаты', 'callback_data' => 'Дебаты tni']  
+                    ],
+                    [
+                        ['text' => 'Тренинг', 'callback_data' => 'Тренинг tni']  
+                    ],
+                    [
+                        ['text' => 'Мастер-класс', 'callback_data' => 'Мастер-класс tni']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
                 ]
             ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }else{
+        // Выводим интересы в правильном виде
+        if (!empty($ui['interest1'])) {
+            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ui['interest1'] . "\n";
+        }
+        if (!empty($ui['interest2'])) {
+            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ui['interest2'] . "\n";
+        }    
+        if (!empty($ui['interest3'])) {
+            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ui['interest3'] . "\n";
+        }
+        if (!empty($ui['interest4'])) {
+            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ui['interest4'] . "\n";
+        }
+        if (!empty($ui['interest5'])) {
+            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
+        }
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Нетворкинг', 'callback_data' => 'Нетворкинг tni']  
+                    ],
+                    [
+                        ['text' => 'Мастермайнд', 'callback_data' => 'Мастермайнд tni']  
+                    ],
+                    [
+                        ['text' => 'Форум', 'callback_data' => 'Форум tni']  
+                    ],
+                    [
+                        ['text' => 'Митинг', 'callback_data' => 'Митинг tni']  
+                    ],
+                    [
+                        ['text' => 'Дебаты', 'callback_data' => 'Дебаты tni']  
+                    ],
+                    [
+                        ['text' => 'Тренинг', 'callback_data' => 'Тренинг tni']  
+                    ],
+                    [
+                        ['text' => 'Мастер-класс', 'callback_data' => 'Мастер-класс tni']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }    
     return;
 }
 if ($data['callback_query']['data'] == "1 Спорт") {
     $user = $func['from']['id'];
     // Вывод интересов пользователя
-    $interests = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
+    $interests = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
     $ui = mysqli_fetch_array($interests);
 
-    $method = 'editMessageText';
+    // Переменная для вывода в сообщение
+    $msgArray = "";
+
+    if (empty($ui['interest1'])) {
+        $method = 'editMessageText';
         $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $ui['userInterests'],
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Катание на роликах', 'callback_data' => 'Катание на роликах tni']  
-                ],
-                [
-                    ['text' => 'Йога', 'callback_data' => 'Йога tni']  
-                ],
-                [
-                    ['text' => 'Фитнес', 'callback_data' => 'Фитнес tni']  
-                ],
-                [
-                    ['text' => 'Бег', 'callback_data' => 'Бег tni']  
-                ],
-                [
-                    ['text' => 'Плавание', 'callback_data' => 'Плавание tni']  
-                ],
-                [
-                    ['text' => 'Теннис большой', 'callback_data' => 'Теннис большой tni']  
-                ],
-                [
-                    ['text' => 'Футбол', 'callback_data' => 'Футбол tni']  
-                ],
-                [
-                    ['text' => 'Волейбол', 'callback_data' => 'Волейбол tni']  
-                ],
-                [
-                    ['text' => 'Баскетбол', 'callback_data' => 'Баскетбол tni']  
-                ],
-                [
-                    ['text' => 'Велики', 'callback_data' => 'Велики tni']  
-                ],
-                [
-                    ['text' => 'Самокаты', 'callback_data' => 'Самокаты tni']  
-                ],
-                [
-                    ['text' => 'Картинг', 'callback_data' => 'Картинг tni']  
-                ],
-                [
-                    ['text' => 'Рафтинг', 'callback_data' => 'Рафтинг tni']  
-                ],
-                [
-                    ['text' => 'Виндсерфинг', 'callback_data' => 'Виндсерфинг tni']  
-                ],
-                [
-                    ['text' => 'Танцы', 'callback_data' => 'Танцы tni']  
-                ],
-                [
-                    ['text' => 'Пинг понг', 'callback_data' => 'Пинг понг tni']  
-                ],
-                [
-                    ['text' => 'Пилатес', 'callback_data' => 'Пилатес tni']  
-                ],
-                [
-                    ['text' => 'Поход', 'callback_data' => 'Поход tni']  
-                ],
-                [
-                    ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+            'text' => "Выберите интерес:",
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Катание на роликах', 'callback_data' => 'Катание на роликах tni']  
+                    ],
+                    [
+                        ['text' => 'Йога', 'callback_data' => 'Йога tni']  
+                    ],
+                    [
+                        ['text' => 'Фитнес', 'callback_data' => 'Фитнес tni']  
+                    ],
+                    [
+                        ['text' => 'Бег', 'callback_data' => 'Бег tni']  
+                    ],
+                    [
+                        ['text' => 'Плавание', 'callback_data' => 'Плавание tni']  
+                    ],
+                    [
+                        ['text' => 'Теннис большой', 'callback_data' => 'Теннис большой tni']  
+                    ],
+                    [
+                        ['text' => 'Футбол', 'callback_data' => 'Футбол tni']  
+                    ],
+                    [
+                        ['text' => 'Волейбол', 'callback_data' => 'Волейбол tni']  
+                    ],
+                    [
+                        ['text' => 'Баскетбол', 'callback_data' => 'Баскетбол tni']  
+                    ],
+                    [
+                        ['text' => 'Велики', 'callback_data' => 'Велики tni']  
+                    ],
+                    [
+                        ['text' => 'Самокаты', 'callback_data' => 'Самокаты tni']  
+                    ],
+                    [
+                        ['text' => 'Картинг', 'callback_data' => 'Картинг tni']  
+                    ],
+                    [
+                        ['text' => 'Рафтинг', 'callback_data' => 'Рафтинг tni']  
+                    ],
+                    [
+                        ['text' => 'Виндсерфинг', 'callback_data' => 'Виндсерфинг tni']  
+                    ],
+                    [
+                        ['text' => 'Танцы', 'callback_data' => 'Танцы tni']  
+                    ],
+                    [
+                        ['text' => 'Пинг понг', 'callback_data' => 'Пинг понг tni']  
+                    ],
+                    [
+                        ['text' => 'Пилатес', 'callback_data' => 'Пилатес tni']  
+                    ],
+                    [
+                        ['text' => 'Поход', 'callback_data' => 'Поход tni']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
                 ]
             ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }else{
+        // Выводим интересы в правильном виде
+        if (!empty($ui['interest1'])) {
+            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ui['interest1'] . "\n";
+        }
+        if (!empty($ui['interest2'])) {
+            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ui['interest2'] . "\n";
+        }    
+        if (!empty($ui['interest3'])) {
+            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ui['interest3'] . "\n";
+        }
+        if (!empty($ui['interest4'])) {
+            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ui['interest4'] . "\n";
+        }
+        if (!empty($ui['interest5'])) {
+            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
+        }
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $msgArray,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Катание на роликах', 'callback_data' => 'Катание на роликах tni']  
+                    ],
+                    [
+                        ['text' => 'Йога', 'callback_data' => 'Йога tni']  
+                    ],
+                    [
+                        ['text' => 'Фитнес', 'callback_data' => 'Фитнес tni']  
+                    ],
+                    [
+                        ['text' => 'Бег', 'callback_data' => 'Бег tni']  
+                    ],
+                    [
+                        ['text' => 'Плавание', 'callback_data' => 'Плавание tni']  
+                    ],
+                    [
+                        ['text' => 'Теннис большой', 'callback_data' => 'Теннис большой tni']  
+                    ],
+                    [
+                        ['text' => 'Футбол', 'callback_data' => 'Футбол tni']  
+                    ],
+                    [
+                        ['text' => 'Волейбол', 'callback_data' => 'Волейбол tni']  
+                    ],
+                    [
+                        ['text' => 'Баскетбол', 'callback_data' => 'Баскетбол tni']  
+                    ],
+                    [
+                        ['text' => 'Велики', 'callback_data' => 'Велики tni']  
+                    ],
+                    [
+                        ['text' => 'Самокаты', 'callback_data' => 'Самокаты tni']  
+                    ],
+                    [
+                        ['text' => 'Картинг', 'callback_data' => 'Картинг tni']  
+                    ],
+                    [
+                        ['text' => 'Рафтинг', 'callback_data' => 'Рафтинг tni']  
+                    ],
+                    [
+                        ['text' => 'Виндсерфинг', 'callback_data' => 'Виндсерфинг tni']  
+                    ],
+                    [
+                        ['text' => 'Танцы', 'callback_data' => 'Танцы tni']  
+                    ],
+                    [
+                        ['text' => 'Пинг понг', 'callback_data' => 'Пинг понг tni']  
+                    ],
+                    [
+                        ['text' => 'Пилатес', 'callback_data' => 'Пилатес tni']  
+                    ],
+                    [
+                        ['text' => 'Поход', 'callback_data' => 'Поход tni']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+    }    
     return;
 }
 
@@ -485,7 +747,7 @@ if ($data['callback_query']['data'] == "1 Спорт") {
 if ($data['callback_query']['data'] == "2.1chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
     
     $method = 'editMessageText';
     $send_data = [
@@ -550,7 +812,7 @@ if ($data['callback_query']['data'] == "2.1chFirst") {
 if ($data['callback_query']['data'] == "2chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
     
     $method = 'editMessageText';
     $send_data = [
@@ -616,7 +878,7 @@ if ($data['callback_query']['data'] == "2chFirst") {
 if ($data['callback_query']['data'] == "3chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
     $method = 'editMessageText';
     $send_data = [
@@ -641,34 +903,12 @@ if ($data['callback_query']['data'] == "3chFirst") {
     return;
 }
 
-/*if ($data['callback_query']['data'] == 'Сохранить качества') {
-    $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID=".$user." ");
-    
-    // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
-    $method = 'sendMessage';
-    $send_data = [
-        'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для знакомств',
-        'reply_markup' => [
-            resize_keyboard =>true,
-            one_time_keyboard => true,
-            'keyboard' => [
-                [
-                    ['text' => 'Поделиться местоположением', request_location => true]
-                ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    sendTelegram($method, $send_data);
-    return;
-}*/
-
 // 4 кнопка
 if ($data['callback_query']['data'] == "4.1chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+
     $method = 'editMessageText';
     $send_data = [
         'text' => 'Выберите категорию:',
@@ -733,7 +973,8 @@ if ($data['callback_query']['data'] == "4.1chFirst") {
 if ($data['callback_query']['data'] == "4chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+
     $method = 'editMessageText';
     $send_data = [
         'text' => 'Выберите категорию:',
@@ -798,7 +1039,8 @@ if ($data['callback_query']['data'] == "4chFirst") {
 if ($data['callback_query']['data'] == "5.1chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+
     $method = 'editMessageText';
     $send_data = [
         'text' => 'Выберите категорию:',
@@ -863,7 +1105,8 @@ if ($data['callback_query']['data'] == "5.1chFirst") {
 if ($data['callback_query']['data'] == "5chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
+
     $method = 'editMessageText';
     $send_data = [
         'text' => 'Выберите категорию:',
@@ -951,7 +1194,7 @@ if($func['location'] != ""){
 
     $method = 'sendMessage';
     $send_data = [
-        'text' => "👌 Отлично, чат в вашем городе я уже нашел, но для полной регистрации мне нужно знать ваш номер. \nНажмите на кнопку ниже 👇",
+        'text' => "👌 Отлично, чат в твоем городе я уже нашел, но для полной регистрации мне нужно знать твой номер. \nНажми на кнопку ниже 👇",
         'reply_markup' => [
             resize_keyboard =>true,
             one_time_keyboard => true,
@@ -970,27 +1213,21 @@ if($func['location'] != ""){
 // Если мы получили номер телефона
 if($func['contact']['phone_number'] != ""){
     $user = $func['from']['id'];
-
-    // Получаем id нашего главного сообщения
-    $mainID = mysqli_query ($con, "SELECT `mesToChange` FROM `BOT` WHERE userID='".$user."' ");
+        // Получаем id нашего главного сообщения
+    $mainID = mysqli_query ($con, "SELECT `mesToChange` FROM `TrackingMenu` WHERE userID='".$user."' ");
     $mes = mysqli_fetch_array($mainID);
-
-    // Удаление номера
+        // Удаление номера
     $send_data['message_id'] = $func['message_id'];
     $send_data['chat_id'] = $func['chat']['id'];
     sendTelegram('deleteMessage', $send_data);
-
-    // Удаление запроса номера
+        // Удаление запроса номера
     $send_data['message_id'] = $func['reply_to_message']['message_id'];
     sendTelegram('deleteMessage', $send_data);
-
-    // Удаление первого меню
+        // Удаление первого меню
     $send_data['message_id'] = $mes['mesToChange'];
     sendTelegram('deleteMessage', $send_data);
-
-    // Пушим номер в БД
-    mysqli_query ($con, "UPDATE `BOT` SET userNum = ".$func['message']['message_id']." WHERE userID=".$user." ");
-
+        // Пушим номер в БД
+    mysqli_query ($con, "UPDATE `MainInfo` SET userNum = ".$data['contact']['phone_number']." WHERE userID=".$user." ");
     /*// Проверяем в какой ветке дать пользователю возможность писать
     if (strpos($func['reply_to_message']['text'], "общения") {
         
@@ -1003,21 +1240,19 @@ if($func['contact']['phone_number'] != ""){
     }else{
 
     }*/
-
-    // Отправляем ссылку на чат
+        // Отправляем ссылку на чат
     $method = 'sendMessage';
     $send_data = [
-        'text' => 'Вступите в чат [Деловая Одесса](https://t.me/+8mMjL5dm2c0zYTVi) и в ветке "Встречи по интересам" напишите приветственное сообщение и вам откроются дополнительные функции!',
+        'text' => 'Вступи в чат [Деловая Одесса](https://t.me/+8mMjL5dm2c0zYTVi) и в ветке "Встречи по интересам" напиши приветственное сообщение и тебе откроются дополнительные функции!',
         'parse_mode' => 'markdown',
         'disable_web_page_preview' => true
     ];
     $send_data['chat_id'] = $func['chat']['id'];
     sendTelegram($method, $send_data);
-
-    // Выводим человека из всех меню
+        // Выводим человека из всех меню
     $user = $func['from']['id'];
-    mysqli_query($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID = '".$user."' ");
-    // Даем доступ к меню
+    mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = '".$user."' ");
+        // Даем доступ к меню
     $method = 'sendMessage';
     $send_data = [
         'text' => '📋 *Главное меню:*',
@@ -1057,54 +1292,31 @@ if($func['contact']['phone_number'] != ""){
 
 // Если мы получили сообщение и оно не отработало выше
 if ($data['message']['text']) {
-
     $user = $func['from']['id'];
     $mesID = $func['message_id'];
-
-    // Подключаемся к базе и ищем в каком меню находится пользователь и все остальное
-    $menuCheck = mysqli_query ($con, "SELECT `whichMenu`, `rowsToDel`, `userInterests`, `oldInterests`, `userNeeds`, `oldNeeds`, `userName`, `oldName`, `oldAge`, `userAge`, `mesToChange`, `inst`, `facebook`, `anotherSocial`, `viber`, `whatsapp`, `tiktok` FROM `BOT` WHERE userID='".$user."' ");
-    $menu = mysqli_fetch_array($menuCheck);
-
-    // Подключаемся к базе наград, чтобы знать выдавать награды или нет
+        // Подключаемся к базе и ищем в каком меню находится пользователь и все остальное
+    $MainCheck = mysqli_query ($con, "SELECT * FROM `MainInfo` WHERE userID='".$user."' ");
+    $TrackCheck = mysqli_query ($con, "SELECT * FROM `TrackingMenu` WHERE userID='".$user."' ");
+    $SocialCheck = mysqli_query ($con, "SELECT * FROM `Socials` WHERE userID='".$user."' ");
     $rewardsCheck = mysqli_query ($con, "SELECT `SkillsReward`, `InterestsReward`, `NeedsReward` FROM `userRewards` WHERE userID='".$user."' ");
+        // Обрабатываем запросы
+    $main = mysqli_fetch_array($MainCheck);
+    $track = mysqli_fetch_array($TrackCheck);
+    $social = mysqli_fetch_array($SocialCheck);
     $reward = mysqli_fetch_array($rewardsCheck);
 
-    // Если в меню "Интересы"
-    if ($menu['whichMenu'] == "Интересы") {
-
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
-
-            // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-            $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldInterests = '".$menu['userInterests']."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$message."' WHERE userID = ".$user." ");
-
-        }else{
-            
-            // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-            // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$message."' WHERE userID = ".$user." ");
-        }
-
-    }else if ($menu['whichMenu'] == "ФИДБЭК") {
-        // Пушим сообщение пользователя в БД
+    if ($track['whichMenu'] == "ФИДБЭК") {
+            // Пушим сообщение пользователя в БД
         $user = $func['from']['id'];
         $a = mysqli_query ($con, "INSERT INTO `feedback` (`message`, `userid`) VALUES ('".$data['message']['text']."', '".$user."' )");
-
-        // Получаем id сообщения, которое будем менять из БД
-        $mesToChange = mysqli_query ($con, "SELECT `mesToChange` FROM `BOT` WHERE userID='".$user."' ");
+            // Получаем id сообщения, которое будем менять из БД
+        $mesToChange = mysqli_query ($con, "SELECT `mesToChange` FROM `TrackingMenu` WHERE userID='".$user."' ");
         $mes = mysqli_fetch_array($mesToChange);
-        
-        // Удаляем сообщение
+            // Удаляем сообщение
         $send_data['message_id'] = $data['message']['message_id'];
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
-
-        // Выводим благодарность
+            // Выводим благодарность
         $method = 'editMessageText';
         $send_data = [
             'text' => '*Спасибо большое! Благодаря тебе, я становлюсь лучше с каждым днем!*',
@@ -1120,427 +1332,151 @@ if ($data['message']['text']) {
         $send_data['chat_id'] = $data['message']['chat']['id'];
         $send_data['message_id'] = $mes['mesToChange'];
         sendTelegram($method, $send_data);
+    }
 
-    }elseif ($menu['whichMenu'] == "Потребности") {
+    /*elseif ($track['whichMenu'] == "ИмяФамилия") {
         // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
-
+        if (empty($track['rowsToDel'])) {
             // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-            $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['userNeeds']."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$message."' WHERE userID = ".$user." ");
-
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldName = '".$main['userName']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET userName = '".$data['message']['text']."' WHERE userID = ".$user." ");
         }else{
-            
             // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . ", " . $mesID;
-
-            // Создаем массив из всех потребностей
-            $needsArray = explode(", ", $newMesID);
-
-            // Проверяем если потребности = 5 и награда = 0, тогда даем монеты
-            if (count($needsArray) == 5 and $reward['NeedsReward'] == 0) {
-                // Пушим, что дали награду
-                mysqli_query ($con, "UPDATE `userRewards` SET NeedsReward = 1 WHERE userID = ".$user." ");
-
-                // Получаем кол-во монет пользователя
-                $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
-                $coins = mysqli_fetch_array($selectCoins);
-
-                // Плюсуем к монетам награду
-                $coins = $coins['userCoins'] + 100;
-
-                // Выдаем монеты
-                mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
-            }
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
 
             // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$message."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET userName = '".$data['message']['text']."' WHERE userID = ".$user." ");
         }
-    }elseif ($menu['whichMenu'] == "ДобавитьКачества") {
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
 
-            // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-            $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['userNeeds']."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$message."' WHERE userID = ".$user." ");
+    }*/
 
+    else if ($track['whichMenu'] == "Изменить возраст") {
+            // Проверяем первое ли это сообщение в БД
+        if (empty($track['rowsToDel'])) {
+                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldAge = '".$main['userAge']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET userAge = '".$message."' WHERE userID = ".$user." ");
         }else{
-            // Узнаем кол-во качеств в профиле человека
-            $needsCount = explode(", ", $menu['userNeeds']);
-            $a = count($needsCount) + 1;
-
-            if ($a < 10) {
                 // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . ", " . $mesID;
-
-                $allNeeds = $menu['userNeeds'] . ", " . $message;
-
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
                 // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$allNeeds."' WHERE userID = ".$user." ");
-            }else{
-                $user = $func['from']['id'];
-
-                // Пушим, что дали награду
-                mysqli_query ($con, "UPDATE `userRewards` SET NeedsReward = 1 WHERE userID = ".$user." ");
-
-                // Получаем кол-во монет пользователя
-                $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
-                $coins = mysqli_fetch_array($selectCoins);
-
-                // Плюсуем к монетам награду
-                $coins = $coins['userCoins'] + 100;
-
-                // Выдаем монеты
-                mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
-
-                $newMesID = $menu['rowsToDel'] . ", " . $mesID;
-
-                $allNeeds = $menu['userNeeds'] . ", " . $message;
-
-                // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$allNeeds."' WHERE userID = ".$user." ");
-
-                // Получаем новый список строк для удаления
-                $strToDel = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."'");
-                $str = mysqli_fetch_array($strToDel);
-
-                // Создаем массив из строк для удаления
-                $rowArray = explode(", ", $str['rowsToDel']);
-
-                // Удаляем все сообщения в чате
-                $send_data['chat_id'] = $user;
-                foreach ($rowArray as $value) {
-                    $send_data['message_id'] = $value;
-                    sendTelegram('deleteMessage', $send_data);
-                }
-
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => 'Отлично, ты запонил 10 качеств: ' . $userNeeds,
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Сохранить', 'callback_data' => 'Сохранить качества']
-                            ]
-                        ]
-                    ]
-                ];
-                $send_data['chat_id'] = $user;
-                $send_data['message_id'] = $menu['mesToChange'];
-                sendTelegram($method, $send_data);
-            }
-
-            
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET userAge = '".$message."' WHERE userID = ".$user." ");
         }
-    }elseif ($menu['whichMenu'] == "ИмяФамилия") {
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
+    }
 
-            // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-            $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldName = '".$menu['userName']."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userName = '".$data['message']['text']."' WHERE userID = ".$user." ");
-
+    else if ($track['whichMenu'] == "инста"){
+            // Проверяем первое ли это сообщение в БД
+        if (empty($track['rowsToDel'])) {
+                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['inst']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET inst = '".$message."' WHERE userID = ".$user." ");
         }else{
-            
-            // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-            // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userName = '".$data['message']['text']."' WHERE userID = ".$user." ");
+                // Если же там что-то было, тогда плюсуем новый id к старым
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
+                // Пушим в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET inst = '".$message."' WHERE userID = ".$user." ");
         }
-    }elseif ($menu['whichMenu'] == "Изменить возраст") {
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
+    }
 
-            // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-            $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldAge = '".$menu['userAge']."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userAge = '".$message."' WHERE userID = ".$user." ");
-
+    else if ($track['whichMenu'] == "tiktok"){
+            // Проверяем первое ли это сообщение в БД
+        if (empty($track['rowsToDel'])) {
+                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['tiktok']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET tiktok = '".$message."' WHERE userID = ".$user." ");
         }else{
-            
-            // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-            // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-            $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET userAge = '".$message."' WHERE userID = ".$user." ");
+                // Если же там что-то было, тогда плюсуем новый id к старым
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
+                // Пушим в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET tiktok = '".$message."' WHERE userID = ".$user." ");
         }
-    }elseif ($menu['whichMenu'] == "Finder по потребностям") {
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
+    }
 
-            // Если да, тогда сразу пушим этот id
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-
-            // Находим людей по запросу
-            $needsCheck = mysqli_query ($con, "SELECT `tgUserName` FROM `BOT` WHERE `userNeeds` LIKE '%".$message."%' ");
-            $needs = mysqli_fetch_array($needsCheck);
-
-            $userNames = "";
-            $counter = 0;
-            foreach ($needsCheck as $key => $value) {
-                /**/
-                mysqli_fetch_array($value);
-                foreach ($value as $key => $value) {
-                    $userNames .= $value . "\n";
-                    $counter += 1;
-                }
-            }
-
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => '🔎 Людей найдено по запросу '.$message.': ' . $counter . "\n\n" . $userNames,
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👈 Вернуться в меню поиска', 'callback_data' => 'Отменить interestsFinder']
-                        ]
-                    ]
-                ]
-            ];
-            $send_data['chat_id'] = $user;
-            $send_data['message_id'] = $menu['mesToChange'];
-            sendTelegram($method, $send_data);
-
+    else if ($track['whichMenu'] == "facebook"){
+            // Проверяем первое ли это сообщение в БД
+        if (empty($track['rowsToDel'])) {
+                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['facebook']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET facebook = '".$message."' WHERE userID = ".$user." ");
         }else{
-            
-            // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-            // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-
-            $needsCheck = mysqli_query ($con, "SELECT `tgUserName` FROM `BOT` WHERE `userNeeds` LIKE '%".$message."%' ");
-            $needs = mysqli_fetch_array($needsCheck);
-
-            $userNames = "";
-            $counter = 0;
-            foreach ($needsCheck as $key => $value) {
-                /**/
-                mysqli_fetch_array($value);
-                foreach ($value as $key => $value) {
-                    $userNames .= $value . "\n";
-                    $counter += 1;
-                }
-            }
-
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => '🔎 Людей найдено по запросу '.$message.': ' . $counter . "\n\n" . $userNames,
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👈 Вернуться в меню поиска', 'callback_data' => 'Отменить interestsFinder']
-                        ]
-                    ]
-                ]
-            ];
-            $send_data['chat_id'] = $user;
-            $send_data['message_id'] = $menu['mesToChange'];
-            sendTelegram($method, $send_data);
+                // Если же там что-то было, тогда плюсуем новый id к старым
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
+                // Пушим в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET facebook = '".$message."' WHERE userID = ".$user." ");
         }
+    }
 
-    }elseif ($menu['whichMenu'] == "Finder по интересам") {
-        // Проверяем первое ли это сообщение в БД
-        if (empty($menu['rowsToDel'])) {
-
-            // Если да, тогда сразу пушим этот id
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-
-            // Находим людей по запросу
-            $needsCheck = mysqli_query ($con, "SELECT `tgUserName` FROM `BOT` WHERE `userInterests` LIKE '%".$message."%' ");
-            $needs = mysqli_fetch_array($needsCheck);
-
-            $userNames = "";
-            $counter = 0;
-            foreach ($needsCheck as $key => $value) {
-                /**/
-                mysqli_fetch_array($value);
-                foreach ($value as $key => $value) {
-                    $userNames .= $value . "\n";
-                    $counter += 1;
-                }
-            }
-
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => '🔎 Людей найдено по запросу '.$message.': ' . $counter . "\n\n" . $userNames,
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👈 Вернуться в меню поиска', 'callback_data' => 'Отменить needsFinder']
-                        ]
-                    ]
-                ]
-            ];
-            $send_data['chat_id'] = $user;
-            $send_data['message_id'] = $menu['mesToChange'];
-            sendTelegram($method, $send_data);
-
-        }else{   
-            // Если же там что-то было, тогда плюсуем новый id к старым
-            $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-            // Пушим в БД
-            $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-
-            $needsCheck = mysqli_query ($con, "SELECT `tgUserName` FROM `BOT` WHERE `userInterests` LIKE '%".$message."%' ");
-            $needs = mysqli_fetch_array($needsCheck);
-
-            $userNames = "";
-            $counter = 0;
-            foreach ($needsCheck as $key => $value) {
-                /**/
-                mysqli_fetch_array($value);
-                foreach ($value as $key => $value) {
-                    $userNames .= $value . "\n";
-                    $counter += 1;
-                }
-            }
-
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => '🔎 Людей найдено по запросу '.$message.': ' . $counter . "\n\n" . $userNames,
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👈 Вернуться в меню поиска', 'callback_data' => 'Отменить needsFinder']
-                        ]
-                    ]
-                ]
-            ];
-            $send_data['chat_id'] = $user;
-            $send_data['message_id'] = $menu['mesToChange'];
-            sendTelegram($method, $send_data);
+    else if ($track['whichMenu'] == "viber"){
+            // Проверяем первое ли это сообщение в БД
+        if (empty($track['rowsToDel'])) {
+                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['viber']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET viber = '".$message."' WHERE userID = ".$user." ");
+        }else{
+                // Если же там что-то было, тогда плюсуем новый id к старым
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
+                // Пушим в БД
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET viber = '".$message."' WHERE userID = ".$user." ");
         }
-    }else if ($menu['whichMenu'] == "инста"){
+    }
+
+    else if ($track['whichMenu'] == "whatsapp"){
             // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
-
+        if (empty($track['rowsToDel'])) {
                 // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['inst']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET inst = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['whatsapp']."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET whatsapp = '".$message."' WHERE userID = ".$user." ");
+        }else{
                 // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
                 // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET inst = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else if ($menu['whichMenu'] == "tiktok"){
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `Socials` SET whatsapp = '".$message."' WHERE userID = ".$user." ");
+        }
+    }
+
+    else if ($track['whichMenu'] == "anotherSocial"){
             // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
-
+        if (empty($track['rowsToDel'])) {
                 // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['tiktok']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET tiktok = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
+            $updateRows = mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
+            $saveOldInterests = mysqli_query ($con, "UPDATE `TrackingMenu` SET oldNeeds = '".$social['anotherSocial']."' WHERE userID = ".$user." ");
+            $updateInterests = mysqli_query ($con, "UPDATE `Socials` SET anotherSocials = '".$message."' WHERE userID = ".$user." ");
+        }else{
                 // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
+            $newMesID = $track['rowsToDel'] . " , " . $mesID;
                 // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET tiktok = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else if ($menu['whichMenu'] == "facebook"){
-            // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
+            $updateRows = mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
+            $updateInterests = mysqli_query ($con, "UPDATE `Socials` SET anotherSocials = '".$message."' WHERE userID = ".$user." ");
+        }
+    }
 
-                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['facebook']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET facebook = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
-                // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-                // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET facebook = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else if ($menu['whichMenu'] == "viber"){
-            // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
-
-                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['viber']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET viber = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
-                // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-                // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET viber = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else if ($menu['whichMenu'] == "whatsapp"){
-            // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
-
-                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['whatsapp']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET whatsapp = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
-                // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-                // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET whatsapp = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else if ($menu['whichMenu'] == "anotherSocial"){
-            // Проверяем первое ли это сообщение в БД
-            if (empty($menu['rowsToDel'])) {
-
-                // Если да, тогда сразу пушим этот id и содержание сообщения в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
-                $saveOldInterests = mysqli_query ($con, "UPDATE `BOT` SET oldNeeds = '".$menu['anotherSocial']."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET anotherSocial = '".$message."' WHERE userID = ".$user." ");
-
-            }else{
-                
-                // Если же там что-то было, тогда плюсуем новый id к старым
-                $newMesID = $menu['rowsToDel'] . " , " . $mesID;
-
-                // Пушим в БД
-                $updateRows = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '".$newMesID."' WHERE userID = ".$user." ");
-                $updateInterests = mysqli_query ($con, "UPDATE `BOT` SET anotherSocial = '".$message."' WHERE userID = ".$user." ");
-            }
-    }else{
+    else{
         // Удаляем любое другое сообщение
         $send_data['message_id'] = $mesID;
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
     }
-
 }
 
 // Обработчик фото
 if (isset($data['message']['photo'])) {
     // Проверяем, если человек в меню "Добавление фото", тогда действуем, если нет - удаляем
     $user = $func['from']['id'];
-    $checkMenu = mysqli_query ($con, "SELECT `whichMenu`, `mesToChange` FROM `BOT` WHERE userID='".$user."' ");
+    $checkMenu = mysqli_query ($con, "SELECT `whichMenu`, `mesToChange` FROM `TrackingMenu` WHERE userID='".$user."' ");
     $menu = mysqli_fetch_array($checkMenu);
     if ($menu['whichMenu'] == "ДобавлениеФото") {
         $photo = $data['message']['photo'][3];
@@ -1561,7 +1497,7 @@ if (isset($data['message']['photo'])) {
             copy($src, $dest);
 
             // Пушим в БД путь до фотографии
-            mysqli_query ($con, "UPDATE `BOT` SET userPhoto = '".$p."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET userPhoto = '".$p."' WHERE userID = ".$user." ");
 
             // Удаляем фотку
             $send_data['message_id'] = $func['message_id'];
@@ -1575,16 +1511,95 @@ if (isset($data['message']['photo'])) {
 
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto` FROM `BOT` WHERE userID='".$user."' ");
-            $prof = mysqli_fetch_array($profCheck);
+            $mainCheck = mysqli_query ($con, "SELECT * FROM `MainInfo` WHERE userID='".$user."' ");
+            $needCheck = mysqli_query ($con, "SELECT * FROM `Needs` WHERE userID='".$user."' ");
+            $skillCheck = mysqli_query ($con, "SELECT * FROM `Skills` WHERE userID='".$user."' ");
+            $intCheck = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
 
-            mysqli_query ($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID = ".$user." ");
+            // Обрабатываем запросы в БД
+            $main = mysqli_fetch_array($mainCheck);
+            $need = mysqli_fetch_array($needCheck);
+            $skill = mysqli_fetch_array($skillCheck);
+            $int = mysqli_fetch_array($intCheck);
+
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = ".$user." ");
+
+            // Создаем переменную в которую будем заливать то что у человека уже введено
+            $msgArray = "";
+
+            if (!empty($main['name']) or !empty($main['surname'])) {
+                $msgArray .= "_Имя и Фамилия:_ " . $main['name'] . " " . $main['surname'] . "\n\n";
+            }
+
+            if (!empty($main['userAge'])) {
+                $msgArray .= "_Возраст:_ " . $main['userAge'] . "\n\n";
+            }
+
+            if (!empty($int['interest1'])) {
+                $msgArray .= "_Мои интересы:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $int['interest1'] . "\n";
+
+                if (!empty($int['interest2'])) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $int['interest2'] . "\n";
+                }    
+                if (!empty($int['interest3'])) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $int['interest3'] . "\n";
+                }
+                if (!empty($int['interest4'])) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $int['interest4'] . "\n";
+                }
+                if (!empty($int['interest5'])) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $int['interest5'] . "\n";
+                }
+                if (!empty($int['interest6'])) {
+                    $msgArray .= $int['interest6'] . "\n";
+                }
+            }
+
+            if (!empty($skill['s1'])) {
+                $msgArray .= "_Мои навыки:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $skill['s1'] . "\n";
+                
+                if (!empty($skill['s2'])) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $skill['s2'] . "\n";
+                }    
+                if (!empty($skill['s3'])) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $skill['s3'] . "\n";
+                }
+                if (!empty($skill['s4'])) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $skill['s4'] . "\n";
+                }
+                if (!empty($skill['s5'])) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $skill['s5'] . "\n";
+                }
+                if (!empty($skill['s6'])) {
+                    $msgArray .= $skill['s6'] . "\n";
+                }
+            }
+
+            if (!empty($need['n1'])) {
+                $msgArray .= "_Мои ценности:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $need['n1'] . "\n";
+                
+                if (!empty($need['n2'])) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $need['n2'] . "\n";
+                }    
+                if (!empty($need['n3'])) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $need['n3'] . "\n";
+                }
+                if (!empty($need['n4'])) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $need['n4'] . "\n";
+                }
+                if (!empty($need['n5'])) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $need['n5'] . "\n";
+                }
+                if (!empty($need['n6'])) {
+                    $msgArray .= $need['n6'] . "\n";
+                }
+            }
 
             $response = [
                 'chat_id' => $user,
-                'caption' => "😁 *Мой профиль*\n\n_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Мои навыки:_ ".$prof['userSkills']."\n\n_Мои интересы:_ ".$prof['userInterests']."\n\n_Мои ценности:_ ".$prof['userNeeds'],
+                'caption' => "😁 *Мой профиль*\n" . $msgArray,
                 "parse_mode" => "Markdown",
-                'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
+                'photo' => curl_file_create("../tgbot/userPhotos/".$main['userPhoto']),
                 'reply_markup'=>json_encode([
                     'inline_keyboard'=>[
                         [
@@ -1621,7 +1636,11 @@ if (isset($data['message']['photo'])) {
             curl_close($ch);
             return;
         }else{
-            $method = 'editMessageText';
+            $send_data['message_id'] = $func['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Упс, проблемка(",
             ];
@@ -1630,38 +1649,63 @@ if (isset($data['message']['photo'])) {
             sendTelegram($method, $send_data);
         }
     }else{
-        // Удаляем любое другое сообщение=
+        // Удаляем любое другое сообщение
         $send_data['message_id'] = $func['message_id'];
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
     }
 }
 
-// Обработчик меню
+    // Обработчик меню
 if (isset($data['callback_query'])) {
-    // Подключаемся к базе наград, чтобы знать выдавать награды или нет
+        // Подключаемся к базе наград, чтобы знать выдавать награды или нет
     $rewardsCheck = mysqli_query ($con, "SELECT `SkillsReward`, `InterestsReward`, `NeedsReward` FROM `userRewards` WHERE userID='".$func['from']['id']."' ");
     $rewards = mysqli_fetch_array($rewardsCheck);
 
-    // Обработка и пуш навыков в БД
+        // Обработка и пуш навыков в БД
     if (strpos($data['callback_query']['data'], 'Trainee') !== false || strpos($data['callback_query']['data'], 'Junior') !== false || strpos($data['callback_query']['data'], 'Middle') !== false || strpos($data['callback_query']['data'], 'Senior') !== false) {
 
-        // Вычисляем профессию и навык
+            // Вычисляем профессию и навык
         $msgArray = explode(",", $data['callback_query']['data']);
-        $newSkill = $msgArray[1];
-        $level = $msgArray[0];
+        $newSkill = trim($msgArray[1]);
+        $level = trim($msgArray[0]);
         $addNewSkill = $level . " - " . $newSkill;
 
-        // Получаем из БД все навыки
+            // Получаем из БД все навыки
         $user = $func['from']['id'];
-        $skillCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
+        $skillCheck = mysqli_query ($con, "SELECT * FROM `Skills` WHERE userID='".$user."' ");
         $skill = mysqli_fetch_array($skillCheck);
 
-            // Проверяем есть ли выбранный навык в базе
-            if (strpos($skill['userSkills'], $newSkill)) {
+        $lvlCheck = mysqli_query ($con, "SELECT * FROM `SkillAdds` WHERE userID='".$user."' ");
+        $lvl = mysqli_fetch_array($lvlCheck);
+
+        $msgArray = "";
+
+                // Проверяем есть ли выбранный навык в базе
+            if ($skill['s1'] == $newSkill or $skill['s2'] == $newSkill or $skill['s3'] == $newSkill or $skill['s4'] == $newSkill or $skill['s5'] == $newSkill or strpos($skill['s6'], $newSkill)) {
+                    // Выводим интересы в правильном виде
+                if (!empty($skill['s1'])) {
+                    $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $skill['s1'] . "\n";
+                }
+                if (!empty($skill['s2'])) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $skill['s2'] . "\n";
+                }    
+                if (!empty($skill['s3'])) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $skill['s3'] . "\n";
+                }
+                if (!empty($skill['s4'])) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $skill['s4'] . "\n";
+                }
+                if (!empty($skill['s5'])) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $skill['s5'] . "\n";
+                }
+                if (!empty($skill['s6'])) {
+                    $msgArray .= $skill['s6'] . "\n";
+                }
+
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Упс. У вас в профиле уже есть навык " . $newSkill . "\n\nСейчас список ваших навыков выглядит так: " . $skill['userSkills'],
+                    'text' => "Упс. У вас в профиле уже есть навык " . $newSkill . "\n\nСейчас список ваших навыков выглядит так: \n" . $msgArray,
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -1679,9 +1723,9 @@ if (isset($data['callback_query'])) {
 
             }else{
                 // Если это первый навык
-                if (empty($skill['userSkills'])) {
+                if (empty($skill['s1'])) {
                     // Пушим в БД новую профессию
-                    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$addNewSkill."' WHERE userID = ".$user." ");
+                    $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s1 = '".$newSkill."', lvl1 = '".$level."' WHERE userID = ".$user." ");
 
                     $method = 'editMessageText';
                     $send_data = [
@@ -1701,66 +1745,33 @@ if (isset($data['callback_query'])) {
                     $send_data['message_id'] = $func['message']['message_id'];
                     sendTelegram($method, $send_data);
                 }else{
-                    // Перебираем массив "skill"
-                    $pushSkill = $skill['userSkills'] . " , " . $addNewSkill;
-
-                    // Преобразуем строку скиллов в массив
-                    $skillsArray = explode(" , ", $pushSkill);
-
-                    $msgText1 = "";
-
-                    // Выводим ценности в правильном виде
-                    foreach ($skillsArray as $key => $value) {
-                        if ($key == 0) {
-                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                        }
-                        if ($key == 1) {
-                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                        }
-                        if ($key == 2) {
-                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                        }
-                        if ($key == 3) {
-                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                        }
-                        if ($key == 4) {
-                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                        }
+                        // Выводим интересы в правильном виде
+                    if (!empty($skill['s1'])) {
+                        $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $skill['s1'] . "\n";
+                    }
+                    if (!empty($skill['s2'])) {
+                        $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $skill['s2'] . "\n";
+                    }    
+                    if (!empty($skill['s3'])) {
+                        $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $skill['s3'] . "\n";
+                    }
+                    if (!empty($skill['s4'])) {
+                        $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $skill['s4'] . "\n";
+                    }
+                    if (!empty($skill['s5'])) {
+                        $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $skill['s5'] . "\n";
+                    }
+                    if (!empty($skill['s6'])) {
+                        $msgArray .= $skill['s6'] . "\n";
                     }
 
-                    // Если общее кол-во скилов = 5 и награда = 0, тогда даем награду
-                    if (count($skillsArray) == 5 and $rewards['SkillsReward'] == 0) {
-                        // Пушим, что дали награду
-                        mysqli_query ($con, "UPDATE `userRewards` SET SkillsReward = 1 WHERE userID = ".$user." ");
-
-                        // Получаем кол-во монет пользователя
-                        $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
-                        $coins = mysqli_fetch_array($selectCoins);
-
-                        // Плюсуем к монетам награду
-                        $coins = $coins['userCoins'] + 100;
-
-                        // Выдаем монеты
-                        mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
+                    if (empty($skill['s2'])) {
                         // Пушим в БД новую профессию
-                        $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$pushSkill."' WHERE userID = ".$user." ");
-
-                        $response = [
-                            'chat_id' => $user,
-                            'photo' => curl_file_create("../tgbot/userPhotos/photo_2023-03-29_13-01-47.jpg"),
-                        ];
-                                
-                        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
-                        curl_setopt($ch, CURLOPT_POST, 1);  
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_HEADER, false);
-                        curl_exec($ch);
-                        curl_close($ch);
+                        $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s2 = '".$newSkill."', lvl2 = '".$level."' WHERE userID = ".$user." ");
 
                         $method = 'editMessageText';
                         $send_data = [
-                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level . "\n\nСейчас список ваших навыков выглядит так: " . $msgText1 . "\nВы получили 100 монет за добавление 5 навыков. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
+                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -1777,13 +1788,126 @@ if (isset($data['callback_query'])) {
                         sendTelegram($method, $send_data);
                         return;
                     }
+                    else if (empty($skill['s3'])) {
+                        // Пушим в БД новую профессию
+                        $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s3 = '".$newSkill."', lvl3 = '".$level."' WHERE userID = ".$user." ");
 
-                    // Пушим в БД новую профессию
-                    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$pushSkill."' WHERE userID = ".$user." ");
+                        $method = 'editMessageText';
+                        $send_data = [
+                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                            'reply_markup' => [
+                                'inline_keyboard' => [
+                                    [
+                                        ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                    ],
+                                    [
+                                        ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                    ]
+                                ]
+                            ]
+                        ];
+                        $send_data['chat_id'] = $func['message']['chat']['id'];
+                        $send_data['message_id'] = $func['message']['message_id'];
+                        sendTelegram($method, $send_data);
+                        return;
+                    }
+                    else if (empty($skill['s4'])) {
+                        // Пушим в БД новую профессию
+                        $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s4 = '".$newSkill."', lvl4 = '".$level."' WHERE userID = ".$user." ");
+
+                        $method = 'editMessageText';
+                        $send_data = [
+                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                            'reply_markup' => [
+                                'inline_keyboard' => [
+                                    [
+                                        ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                    ],
+                                    [
+                                        ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                    ]
+                                ]
+                            ]
+                        ];
+                        $send_data['chat_id'] = $func['message']['chat']['id'];
+                        $send_data['message_id'] = $func['message']['message_id'];
+                        sendTelegram($method, $send_data);
+                        return;
+                    }
+                    else if (empty($skill['s5'])) {
+                        // Пушим в БД новую профессию
+                        $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s5 = '".$newSkill."', lvl5 = '".$level."' WHERE userID = ".$user." ");
+
+                        if ($rewards['SkillsReward'] == 0) {
+                            // Пушим, что дали награду
+                            mysqli_query ($con, "UPDATE `userRewards` SET SkillsReward = 1 WHERE userID = ".$user." ");
+
+                            // Получаем кол-во монет пользователя
+                            $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
+                            $coins = mysqli_fetch_array($selectCoins);
+
+                            // Плюсуем к монетам награду
+                            $coins = $coins['coins'] + 100;
+
+                            // Выдаем монеты
+                            mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
+
+                            $method = 'editMessageText';
+                            $send_data = [
+                                'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level . "\n\nСейчас список ваших навыков выглядит так: " . $msgArray . "\nВы получили 100 монет за добавление 5 навыков. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
+                                'reply_markup' => [
+                                    'inline_keyboard' => [
+                                        [
+                                            ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                        ],
+                                        [
+                                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                        ]
+                                    ]
+                                ]
+                            ];
+                            $send_data['chat_id'] = $func['message']['chat']['id'];
+                            $send_data['message_id'] = $func['message']['message_id'];
+                            sendTelegram($method, $send_data);
+                            return;
+                        }else{
+                                // Пушим в БД новую профессию
+                            $updateDB = mysqli_query ($con, "UPDATE `Skills` SET s5 = '".$newSkill."', lvl5 = '".$level."' WHERE userID = ".$user." ");
+                            $method = 'editMessageText';
+                            $send_data = [
+                                'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                                'reply_markup' => [
+                                    'inline_keyboard' => [
+                                        [
+                                            ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                        ],
+                                        [
+                                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                        ]
+                                    ]
+                                ]
+                            ];
+                            $send_data['chat_id'] = $func['message']['chat']['id'];
+                            $send_data['message_id'] = $func['message']['message_id'];
+                            sendTelegram($method, $send_data);
+                            return;
+                        }  
+                    }
+                    else {
+                        if (empty($skill['s6'])) {
+                            // Пушим в БД новую профессию
+                            $push = "(".$level.")".$newSkill;
+                            mysqli_query ($con, "UPDATE `Skills` SET s6 = '".$push."' WHERE userID = ".$user." "); 
+                        }else{
+                            // Пушим в БД новую профессию
+                            $push = $skill['s6'] . ", " . "(".$level.")".$newSkill;
+                            mysqli_query ($con, "UPDATE `Skills` SET s6 = '".$push."' WHERE userID = ".$user." "); 
+                        }
+                    }
 
                     $method = 'editMessageText';
                     $send_data = [
-                        'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level . "\n\nСейчас список ваших навыков выглядит так: " . $msgText1,
+                        'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
@@ -1807,47 +1931,56 @@ if (isset($data['callback_query'])) {
         $word = preg_replace("/1135/i", "", $data['callback_query']['data']);
         $word = trim($word);
 
-        // Достаем из базы все скиллы
+        // Достаем из базы все Интересы
         $user = $func['from']['id'];
-        $profCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-        $prof = mysqli_fetch_array($profCheck);
+        $profCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
 
-        // Создаем массив из всех навыков
-        $skillArray = explode(',' , $prof['userInterests']);
-
-        // Создаем строку, которую потом запушим в БД
-        $newSkills = "";
-
-        // Проходим по массиву скилов и ищем скилл, который будет удален пользоваетелем
-        foreach ($skillArray as $key => $value) {
-            if (trim($value) == $word) {
-                $newSkills .= "";
-            }else{
-                if ($newSkills == "") {
-                    $newSkills .= trim($value);
+        if (trim($prof[0]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest1 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[1]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest2 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[2]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest3 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[3]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest4 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[4]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest5 = '' WHERE userID = ".$user." ");
+        }else{
+            $ar = explode("," , $prof[5]);
+            $arr = "";
+            foreach ($ar as $key => $value1) {
+                if (trim($value1) == $word) {
+                    $arr .= "";
                 }else{
-                    $newSkills .= "," . trim($value);
+                    if ($arr == "") {
+                        $arr .= trim($value1);
+                    }else{
+                        $arr .= ", " . trim($value1);
+                    }
                 }
             }
+            mysqli_query($con, "UPDATE `Interests` SET interest6 = '".$arr."' WHERE userID = ".$user." ");
         }
-
-        // Пушим новую строку в БД
-        mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$newSkills."' WHERE userID = ".$user." ");
 
         // Удаляем сообщение по которому нажали
         $send_data['message_id'] = $data['callback_query']['message']['message_id'];
         $send_data['chat_id'] = $func['from']['id'];
         sendTelegram('deleteMessage', $send_data);
 
+        $profCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
         // Отправляем новое сообщение, если скилов в профиле больше нет
-        if (empty($newSkills)) {
+        if (empty($prof[0]) and empty($prof[1]) and empty($prof[2]) and empty($prof[3]) and empty($prof[4]) and empty($prof[5])) {
             $method = 'sendMessage';
             $send_data = [
-                'text' => "🚲 Мои интересы:" ,
+                'text' => "🚲 *Мои интересы:*",
+                'parse_mode' => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Добавить интересы', 'callback_data' => 'pushInterests']  
+                            ['text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests']  
                         ],
                         [
                             ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
@@ -1862,37 +1995,53 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие скилы
         else{
-            $interestsArray = explode("," , $newSkills);
+            $arrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить интересы', 'callback_data' => 'pushInterests')));
+            array_push($btnsArray, array(array('text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests')));
             // Выводим ценности в правильном виде
-            foreach ($interestsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($prof as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $skills6 = explode("," , $value);
+                    foreach ($skills6 as $key => $value) {
+                        $msgText3 .= trim($value) . "\n";
+                        array_push($arrTo6, $value);
+                    }
                 }
             }
 
-            foreach ($interestsArray as $key => $value) {
-                array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value." 1135")));
+            foreach ($prof as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1135")));
+                }else{
+                    if (!empty($value)) {
+                        foreach ($arrTo6 as $key => $value) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1135")));
+                        }
+                    }
+                }
             }
 
             array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
             $method = 'sendMessage';
             $send_data = [
-                'text' => "🚲 Мои интересы:\n\n" . $msgText3,
+                'text' => "🚲 *Мои интересы:*\n\n" . $msgText3,
+                'parse_mode' => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => $btnsArray
                 ]
@@ -1911,36 +2060,51 @@ if (isset($data['callback_query'])) {
 
         // Достаем из базы все скиллы
         $user = $func['from']['id'];
-        $profCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-        $prof = mysqli_fetch_array($profCheck);
+        $profCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
 
-        // Создаем массив из всех навыков
-        $skillArray = explode(',' , $prof['userSkills']);
-
-        // Создаем строку, которую потом запушим в БД
-        $newSkills = "";
-
-        // Проходим по массиву скилов и ищем скилл, который будет удален пользоваетелем
-        foreach ($skillArray as $key => $value) {
-            if (strpos($value, $word) == false) {
-                if ($newSkills == '') {
-                    $newSkills .= $value;
+        if ($prof[0] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s1 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl1 = '' WHERE userID = ".$user." ");
+        }else if ($prof[1] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s2 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl2 = '' WHERE userID = ".$user." ");
+        }else if ($prof[2] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s3 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl3 = '' WHERE userID = ".$user." ");
+        }else if ($prof[3] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s4 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl4 = '' WHERE userID = ".$user." ");
+        }else if ($prof[4] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s5 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl5 = '' WHERE userID = ".$user." ");
+        }else{
+            $ar = explode("," , $prof[5]);
+            $arr = "";
+            foreach ($ar as $key => $value) {
+                if ($value == $word) {
+                    $arr .= "";
                 }else{
-                    $newSkills .= "," . $value;
+                    if ($arr == "") {
+                        $arr .= $value;
+                    }else{
+                        $arr .= ", " . $value;
+                    }
                 }
             }
+            mysqli_query($con, "UPDATE `Skills` SET s6 = '".$arr."' WHERE userID = ".$user." ");
         }
-
-        // Пушим новую строку в БД
-        mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$newSkills."' WHERE userID = ".$user." ");
 
         // Удаляем сообщение по которому нажали
         $send_data['message_id'] = $data['callback_query']['message']['message_id'];
         $send_data['chat_id'] = $func['from']['id'];
         sendTelegram('deleteMessage', $send_data);
 
+        $profCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
         // Отправляем новое сообщение, если скилов в профиле больше нет
-        if (empty($newSkills)) {
+        if (empty($prof[0]) and empty($prof[1]) and empty($prof[2]) and empty($prof[3]) and empty($prof[4]) and empty($prof[5])) {
             $method = 'sendMessage';
             $send_data = [
                 'text' => "🧑‍💻 Мои навыки" ,
@@ -1962,32 +2126,47 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие скилы
         else{
-            $interestsArray = explode("," , $newSkills);
+            $arrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить навыки', 'callback_data' => 'choiceSkills')));
-            // Выводим ценности в правильном виде
-            foreach ($interestsArray as $key => $value) {
-                if ($key == 0) {
+            array_push($btnsArray, array(array('text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills')));
+            // Выводим скилы в правильном виде
+            foreach ($prof as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $skills6 = explode("," , $value);
+                    foreach ($skills6 as $key => $value) {
+                        $skill6 = explode(")", $value);
+                        $msgText3 .= trim($skill6[1]) . "\n";
+                        array_push($arrTo6, $skill6[1]);
+                    }
                 }
             }
 
-            foreach ($interestsArray as $key => $value) {
-                $ar = explode("-", $value);
-                array_push($btnsArray, array(array('text' => 'Удалить '.trim($ar[1]), 'callback_data' => trim($ar[1])." 1133")));
+            foreach ($prof as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
+                }else{
+                    if (!empty($value)) {
+                        foreach ($arrTo6 as $key => $value) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        }
+                    }
+                }
             }
 
             array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
@@ -2012,38 +2191,46 @@ if (isset($data['callback_query'])) {
 
         // Достаем из базы все ценности
         $user = $func['from']['id'];
-        $profCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-        $prof = mysqli_fetch_array($profCheck);
+        $profCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
 
-        // Создаем массив из всех ценностей
-        $skillArray = explode(',' , $prof['userNeeds']);
-
-        // Создаем строку, которую потом запушим в БД
-        $newSkills = "";
-
-        // Проходим по массиву скилов и ищем скилл, который будет удален пользоваетелем
-        foreach ($skillArray as $key => $value) {
-            if (trim($value) == $word) {
-                $newSkills .= "";
-            }else{
-                if ($key == 0 or $newSkills == "") {
-                    $newSkills .= trim($value);
+        if ($prof[0] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n1 = '' WHERE userID = ".$user." ");
+        }else if ($prof[1] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n2 = '' WHERE userID = ".$user." ");
+        }else if ($prof[2] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n3 = '' WHERE userID = ".$user." ");
+        }else if ($prof[3] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n4 = '' WHERE userID = ".$user." ");
+        }else if ($prof[4] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n5 = '' WHERE userID = ".$user." ");
+        }else{
+            $ar = explode("," , $prof[5]);
+            $arr = "";
+            foreach ($ar as $key => $value) {
+                if ($value == $word) {
+                    $arr .= "";
                 }else{
-                    $newSkills .= "," . trim($value);
+                    if ($arr == "") {
+                        $arr .= $value;
+                    }else{
+                        $arr .= ", " . $value;
+                    }
                 }
             }
+            mysqli_query($con, "UPDATE `Needs` SET n6 = '".$arr."' WHERE userID = ".$user." ");
         }
-
-        // Пушим новую строку в БД
-        mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$newSkills."' WHERE userID = ".$user." ");
 
         // Удаляем сообщение по которому нажали
         $send_data['message_id'] = $data['callback_query']['message']['message_id'];
         $send_data['chat_id'] = $func['from']['id'];
         sendTelegram('deleteMessage', $send_data);
 
-        // Отправляем новое сообщение, если скилов в профиле больше нет
-        if (empty($newSkills)) {
+        $profCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        // Отправляем новое сообщение, если ценностей в профиле больше нет
+        if (empty($prof[0]) and empty($prof[1]) and empty($prof[2]) and empty($prof[3]) and empty($prof[4]) and empty($prof[5])) {
             $method = 'sendMessage';
             $send_data = [
                 'text' => "📝 *Мои ценности*",
@@ -2063,38 +2250,55 @@ if (isset($data['callback_query'])) {
             $send_data['message_id'] = $func['message']['message_id'];
             sendTelegram($method, $send_data);
             return;
-        }else{
-            $needsArray = explode("," , $newSkills);
-            $msgText2 = "";
+        }
+        // Отправляем новое сообщение, если в профиле еще есть другие ценности
+        else{
+            $arrTo6 = array();
+            $msgText3 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить ценности', 'callback_data' => 'pushNeeds')));
+            array_push($btnsArray, array(array('text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds')));
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
-                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+            foreach ($prof as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
-                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
-                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
-                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
-                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 4 and !empty($value)) {
+                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $needs6 = explode("," , $value);
+                    foreach ($needs6 as $key => $value) {
+                        $msgText3 .= trim($value) . "\n";
+                        array_push($arrTo6, $value);
+                    }
                 }
             }
 
-            foreach ($needsArray as $key => $value) {
-                array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value."1134")));
+            foreach ($prof as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1134")));
+                }else{
+                    if (!empty($value)) {
+                        foreach ($arrTo6 as $key => $value) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1134")));
+                        }
+                    }
+                }
             }
 
             array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
             $method = 'sendMessage';
             $send_data = [
-                'text' => "📝 *Мои ценности*\n\n" . $msgText2,
+                'text' => "📝 *Мои ценности*\n\n" . $msgText3,
                 "parse_mode" => "Markdown",
                 'reply_markup' => [
                     'inline_keyboard' => $btnsArray
@@ -2112,82 +2316,103 @@ if (isset($data['callback_query'])) {
         $send_data['chat_id'] = $func['from']['id'];
         sendTelegram('deleteMessage', $send_data);
 
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = ".$user." ");
+
             // Получаем из БД все о пользователе
-            $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto` FROM `BOT` WHERE userID='".$user."' ");
-            $prof = mysqli_fetch_array($profCheck);
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto` FROM `MainInfo` WHERE userID='".$user."' ");
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$user."' ");
+            
+        $prof = mysqli_fetch_array($profCheck);
+        $skill = mysqli_fetch_row($skillsCheck);
+        $need = mysqli_fetch_row($needsCheck);
+        $int = mysqli_fetch_row($intsCheck);
 
-            mysqli_query ($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID = ".$user." ");
+        $msgText1 = "";
+        $msgText2 = "";
+        $msgText3 = "";
 
-            $skillsArray = explode("," , $prof['userSkills']);
-            $needsArray = explode("," , $prof['userNeeds']);
-            $interestsArray = explode("," , $prof['userInterests']);
-
-            $msgText1 = "";
-            $msgText2 = "";
-            $msgText3 = "";
-
-            // Выводим ценности в правильном виде
-            foreach ($skillsArray as $key => $value) {
-                if ($key == 0) {
-                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+        if (!empty($skill)) {
+            $msgText1 = "\n🧑‍💻 _Мои навыки:_ \n";
+                // Выводим скиллы в правильном виде
+            foreach ($skill as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 1) {
-                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 2) {
-                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 3) {
-                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 4) {
-                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 4 and !empty($value)) {
+                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText1 .= "*" . trim($value) . "*\n";
                 }
             }
+        }
 
-            // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
-                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+        if (!empty($need)) {
+            $msgText2 = "\n📝 _Мои ценности:_ \n";
+                // Выводим ценности в правильном виде
+            foreach ($need as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 1) {
-                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 2) {
-                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 3) {
-                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 4) {
-                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 4 and !empty($value)) {
+                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText2 .= "*" . trim($value) . "*\n";
                 }
             }
-
-            // Выводим ценности в правильном виде
-            foreach ($interestsArray as $key => $value) {
-                if ($key == 0) {
-                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+        }    
+        
+        if (!empty($int)) {
+            $msgText3 = "\n🚲 _Мои интересы:_ \n";
+                // Выводим ценности в правильном виде
+            foreach ($int as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 1) {
-                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 2) {
-                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 3) {
-                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
                 }
-                if ($key == 4) {
-                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                if ($key == 4 and !empty($value)) {
+                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= "*" . trim($value) . "*\n";
                 }
             }
+        }    
 
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "😁 *Мой профиль*\n\n_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Мои навыки:_ \n".$msgText1."\n_Мои интересы:_ \n".$msgText3."\n_Мои ценности:_ \n".$msgText2,
+                    'text' => "😁 *Мой профиль*\n\n*".$prof['name']." ".$prof['surname']."*\n\n_Возраст:_ *".$prof['userAge']."*\n".$msgText1.$msgText2.$msgText3,
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -2222,7 +2447,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "😁 *Мой профиль*\n\n_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Мои навыки:_ \n".$msgText1."\n_Мои интересы:_ \n".$msgText3."\n_Мои ценности:_ \n".$msgText2,
+                    'caption' => "😁 *Мой профиль*\n\n*".$prof['name']." ".$prof['surname']."*\n\n_Возраст:_ *".$prof['userAge']."*\n".$msgText1.$msgText2.$msgText3,
                     "parse_mode" => "Markdown",
                     'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
@@ -2267,48 +2492,62 @@ if (isset($data['callback_query'])) {
 
         // Поиск в БД
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests`, `userNeeds`, `userName`, `userSkills`, `Sex`, `userAge` FROM `BOT` WHERE userID = ".$user." ");
-        $ints = mysqli_fetch_array($intsCheck);
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID = ".$user." ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID = ".$user." ");
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID = ".$user." ");
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = ".$user." ");
+
+        $skills = mysqli_fetch_row($skillsCheck);
+        $needs = mysqli_fetch_row($needsCheck);
+        $ints = mysqli_fetch_row($intsCheck);
+        $prof = mysqli_fetch_array($profCheck);
 
         $needToComplete = "";
 
         // Подготавливаем перечень для заполнения пустых ячеек в профиле
-        if (empty($ints['userInterests'])) {
+        if (empty($ints)) {
             if ($needToComplete == "") {
                 $needToComplete .= "интересы";
             }else{
                 $needToComplete .= ", интересы";
             }    
         }
-        if (empty($ints['userNeeds'])) {
+        if (empty($needs)) {
             if ($needToComplete == "") {
                 $needToComplete .= "ценности";
             }else{
                 $needToComplete .= ", ценности";
             }  
         }
-        if (empty($ints['userName'])) {
+        if (empty($prof['name'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "имя";
             }else{
                 $needToComplete .= ", имя";
             } 
         }
-        if (empty($ints['userSkills'])) {
+        if (empty($prof['surname'])) {
+            if ($needToComplete == "") {
+                $needToComplete .= "фамилия";
+            }else{
+                $needToComplete .= ", фамилия";
+            } 
+        }
+        if (empty($skills)) {
             if ($needToComplete == "") {
                 $needToComplete .= "навыки";
             }else{
                 $needToComplete .= ", навыки";
             } 
         }
-        if (empty($ints['Sex'])) {
+        if (empty($prof['sex'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "пол";
             }else{
                 $needToComplete .= ", пол";
             } 
         }
-        if (empty($ints['userAge'])) {
+        if (empty($prof['userAge'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "возраст";
             }else{
@@ -2321,7 +2560,7 @@ if (isset($data['callback_query'])) {
         $search = trim($search);
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
-        if (empty($ints['userNeeds']) or empty($ints['userName']) or empty($ints['userInterests']) or empty($ints['userSkills']) or empty($ints['Sex']) or empty($ints['userAge'])) {
+        if (empty($prof['userAge']) or empty($prof['sex']) or empty($skills) or empty($needs) or empty($prof['surname']) or empty($ints) or empty($prof['name'])) {
             $method = 'editMessageText';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким навыком, мы вас оповестим\n\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
@@ -2341,8 +2580,8 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
         }else{
             // Поиск в БД по запросу
-            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `BOT` WHERE `userSkills` LIKE '%".$search."%' ");
-            $skill = mysqli_fetch_array($skillCheck);
+            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `Skills` WHERE (s1 LIKE '%".$search."%') OR (s2 LIKE '%".$search."%') OR (s3 LIKE '%".$search."%') OR(s4 LIKE '%".$search."%') OR (s5 LIKE '%".$search."%') ");
+            $skill = mysqli_fetch_row($skillCheck);
 
             $userNames = "";
             $counter = 0;
@@ -2368,7 +2607,7 @@ if (isset($data['callback_query'])) {
             sendTelegram('deleteMessage', $send_data);
 
             // Делаем проверку. Если не нашлось ничего, то выводим сообщение, что никого не нашли, но когда будут появляться люди - мы напишем
-            if (empty($skill['userID'])) {
+            if (empty($skill)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "_Мы не нашли людей по запросу_ *".$search."* _,но когда они появятся - вы получите уведомление_",
@@ -2387,12 +2626,12 @@ if (isset($data['callback_query'])) {
                 return;
             }else{
                 // Пушим список айдишек в БД
-                mysqli_query ($con, "UPDATE `BOT` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
 
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$ids[0]."' ");
+                $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
                 $prof = mysqli_fetch_array($profCheck);
 
                 // Если кол-во найденных профилей = 1
@@ -2400,7 +2639,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -2420,7 +2659,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -2448,7 +2687,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -2471,7 +2710,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -2505,8 +2744,8 @@ if (isset($data['callback_query'])) {
     else if (strpos($data['callback_query']['data'], 'SexSer3ch') !== false) {
         // Поиск в БД такой ценности
         $user = $func['from']['id'];
-        $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID = ".$user." ");
-        $needs = mysqli_fetch_array($needsCheck);
+        $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID = ".$user." ");
+        $needs = mysqli_fetch_row($needsCheck);
 
         // Удаляем SexSer3ch из ценностей
         $chWord = $data['callback_query']['data'];
@@ -2514,9 +2753,9 @@ if (isset($data['callback_query'])) {
         $word = trim($word);
 
         // Если это будет первая ценность
-        if (empty($needs['userNeeds'])) {
+        if (empty($needs)) {
             // Пушим новую ценность в БД
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$word."' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Needs` SET n1 = '".$word."' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -2584,10 +2823,10 @@ if (isset($data['callback_query'])) {
             return;
         }else{
             // Проверяем есть ли такая ценность уже у человека
-            if (strpos($needs['userNeeds'], $word) !== false) {
+            if ($needs[0] == $word or $needs[1] == $word or $needs[2] == $word or $needs[3] == $word or $needs[4] == $word or strpos($needs[5], $word) !== false) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "📝 *Мои ценности*\n\n*Упс! Такая ценность у вас уже есть*\n\n_Сейчас у вас указано:_ ".$word,
+                    'text' => "📝 *Мои ценности*\n\n*Упс! Такая ценность у вас уже есть*",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -2650,107 +2889,111 @@ if (isset($data['callback_query'])) {
                 sendTelegram($method, $send_data);
                 return;
             }else{
-                // Проверяем если можно дать награду, то даем
-                $rewardCheck = mysqli_query ($con, "SELECT `NeedsReward` FROM `userRewards` WHERE userID = ".$user." ");
-                $reward = mysqli_fetch_array($rewardCheck);
+                if ($needs[0] == "") {
+                    mysqli_query ($con, "UPDATE `Needs` SET n1 = '".$word."' WHERE userID = ".$user." ");
+                }
+                else if ($needs[1] == "") {
+                    mysqli_query ($con, "UPDATE `Needs` SET n2 = '".$word."' WHERE userID = ".$user." ");
+                }
+                else if ($needs[2] == "") {
+                    mysqli_query ($con, "UPDATE `Needs` SET n3 = '".$word."' WHERE userID = ".$user." ");
+                }
+                else if ($needs[3] == "") {
+                    mysqli_query ($con, "UPDATE `Needs` SET n4 = '".$word."' WHERE userID = ".$user." ");
+                }
+                else if ($needs[4] == "") {
+                    mysqli_query ($con, "UPDATE `Needs` SET n5 = '".$word."' WHERE userID = ".$user." ");
+                    if ($rewards['NeedsReward'] == 0) {
+                        // Пушим, что дали награду
+                        mysqli_query ($con, "UPDATE `userRewards` SET NeedsReward = 1 WHERE userID = ".$user." ");
 
-                // Создаем новый список ценностей
-                $new = $needs['userNeeds'] . ", " . $word;
+                        // Получаем кол-во монет пользователя
+                        $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
+                        $coins = mysqli_fetch_array($selectCoins);
 
-                // Преобразуем новый список ценностей в массив
-                $newArray = explode(", ", $new);
+                        // Плюсуем к монетам награду
+                        $coins = $coins['coins'] + 100;
 
-                // Проверяем кол-во ценностей, если = 5 и человек не получал награду, то 
-                if (count($newArray) == 5 and $rewards['NeedsReward'] == 0) {
-                    // Пушим, что дали награду
-                    mysqli_query ($con, "UPDATE `userRewards` SET NeedsReward = 1 WHERE userID = ".$user." ");
+                        // Выдаем монеты
+                        mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
-                    // Получаем кол-во монет пользователя
-                    $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
-                    $coins = mysqli_fetch_array($selectCoins);
-
-                    // Плюсуем к монетам награду
-                    $coins = $coins['userCoins'] + 100;
-
-                    // Выдаем монеты
-                    mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
-                    
-                    // Пушим новый список в БД
-                    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$new."' WHERE userID = ".$user." ");
-
-                    // Выводим меню с текстом, что дали награду
-                    $method = 'editMessageText';
-                    $send_data = [
-                        'text' => "📝 *Мои ценности*\n\n*Вы получили 100 монет за заполнение 5 ценностей!*\n\n_Сейчас у вас указано:_ ".$new,
-                        "parse_mode" => "Markdown",
-                        'reply_markup' => [
-                            'inline_keyboard' => [
-                                [
-                                    ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                                ],
-                                [
-                                    ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
-                                ],
-                                [
-                                    ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
+                        $method = 'editMessageText';
+                        $send_data = [
+                            'text' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."*_ и получили 100 монет за добавление 5 ценностей. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:",
+                            'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
+                            ],
+                            [
+                                ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                            ],
+                            [
+                                ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
+                            ]
                                 ]
                             ]
-                        ]
-                    ];
-                    $send_data['chat_id'] = $func['message']['chat']['id'];
-                    $send_data['message_id'] = $func['message']['message_id'];
-                    sendTelegram($method, $send_data);
-                    return;
+                        ];
+                        $send_data['chat_id'] = $func['message']['chat']['id'];
+                        $send_data['message_id'] = $func['message']['message_id'];
+                        sendTelegram($method, $send_data);
+                        return;
+                    }
+                }else{
+                    if ($needs[5] == "") {
+                        mysqli_query ($con, "UPDATE `Needs` SET n6 = '".$word."' WHERE userID = ".$user." ");
+                    }else{
+                        $needs[5] .= ", " . $word;
+                        mysqli_query ($con, "UPDATE `Needs` SET n6 = '".$needs[5]."' WHERE userID = ".$user." "); 
+                    }
                 }
-                // Пушим новый список в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$new."' WHERE userID = ".$user." ");
 
                 // Выводим новое сообщение
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "📝 *Мои ценности*\n\n_Сейчас у вас указано:_ ".$new."\n\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
+                    'text' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."*\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -2832,16 +3075,16 @@ if (isset($data['callback_query'])) {
             'reply_markup' => [
                 'inline_keyboard' => [
                     [
-                        ['text' => 'Trainee', 'callback_data' => 'Trainee,' . $prof]  
+                        ['text' => 'Trainee(Учусь)', 'callback_data' => 'Trainee,' . $prof]  
                     ],
                     [
-                        ['text' => 'Junior', 'callback_data' => 'Junior,' . $prof]  
+                        ['text' => 'Junior(Начинающий)', 'callback_data' => 'Junior,' . $prof]  
                     ],
                     [
-                        ['text' => 'Middle', 'callback_data' => 'Middle,' . $prof]  
+                        ['text' => 'Middle(Средний уровень)', 'callback_data' => 'Middle,' . $prof]  
                     ],
                     [
-                        ['text' => 'Senior', 'callback_data' => 'Senior,' . $prof]  
+                        ['text' => 'Senior(Профессионал)', 'callback_data' => 'Senior,' . $prof]  
                     ],
                     [
                         ['text' => '👈 Вурнуться к выбору навыка', 'callback_data' => 'mySkills']  
@@ -2851,7 +3094,7 @@ if (isset($data['callback_query'])) {
         ];
     }
     else if (strpos($data['callback_query']['data'], 'Трейни') !== false || strpos($data['callback_query']['data'], 'Джуниор') !== false || strpos($data['callback_query']['data'], 'Мидл') !== false || strpos($data['callback_query']['data'], 'Сеньор') !== false){
-
+        $user = $func['from']['id'];
         $lvl = explode("," , $data['callback_query']['data']);
 
         if ($lvl[0] == "Трейни") {
@@ -2866,53 +3109,64 @@ if (isset($data['callback_query'])) {
 
         $push = $level . " - " . $lvl[1];
 
-        $user = $func['from']['id'];
-        $updateDB = mysqli_query ($con, "UPDATE `BOT` SET searchClients = '".$push."' WHERE userID = ".$user." ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchClients`, `active`, `Date`) VALUES ('".$user."', '".$lvl[1]."', '1', NOW()) ");
 
-        // Поиск в БД такого навыка
-        $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests`, `userNeeds`, `userName`, `userSkills`, `Sex`, `userAge` FROM `BOT` WHERE userID = ".$user." ");
-        $ints = mysqli_fetch_array($intsCheck);
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = ".$user." ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = ".$user." ");
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = ".$user." ");
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = ".$user." ");
+        
+        $prof = mysqli_fetch_array($profCheck);
+        $needs = mysqli_fetch_row($needsCheck);
+        $skills = mysqli_fetch_row($skillsCheck);
+        $ints = mysqli_fetch_row($intsCheck);
 
         $needToComplete = "";
 
         // Подготавливаем перечень для заполнения пустых ячеек в профиле
-        if (empty($ints['userInterests'])) {
+        if (empty($ints)) {
             if ($needToComplete == "") {
                 $needToComplete .= "интересы";
             }else{
                 $needToComplete .= ", интересы";
             }    
         }
-        if (empty($ints['userNeeds'])) {
+        if (empty($needs)) {
             if ($needToComplete == "") {
                 $needToComplete .= "ценности";
             }else{
                 $needToComplete .= ", ценности";
             }  
         }
-        if (empty($ints['userName'])) {
+        if (empty($prof['name'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "имя";
             }else{
                 $needToComplete .= ", имя";
             } 
         }
-        if (empty($ints['userSkills'])) {
+        if (empty($prof['surname'])) {
+            if ($needToComplete == "") {
+                $needToComplete .= "фамилию";
+            }else{
+                $needToComplete .= ", фамилию";
+            } 
+        }
+        if (empty($skills)) {
             if ($needToComplete == "") {
                 $needToComplete .= "навыки";
             }else{
                 $needToComplete .= ", навыки";
             } 
         }
-        if (empty($ints['Sex'])) {
+        if (empty($ints['sex'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "пол";
             }else{
                 $needToComplete .= ", пол";
             } 
         }
-        if (empty($ints['userAge'])) {
+        if (empty($prof['userAge'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "возраст";
             }else{
@@ -2921,7 +3175,7 @@ if (isset($data['callback_query'])) {
         }
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
-        if (empty($ints['userNeeds']) or empty($ints['userName']) or empty($ints['userInterests']) or empty($ints['userSkills']) or empty($ints['Sex']) or empty($ints['userAge'])) {
+        if (empty($needs) or empty($prof['name']) or empty($prof['surname']) or empty($ints) or empty($skills) or empty($prof['sex']) or empty($prof['userAge'])) {
             $method = 'editMessageText';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким навыком, мы вас оповестим\n\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
@@ -2941,13 +3195,13 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
         }else{
             // Поиск в БД по запросу
-            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `BOT` WHERE `imSearching` LIKE '%".$lvl[1]."%' ");
-            $skill = mysqli_fetch_array($skillCheck);
+            $usersCheck = mysqli_query ($con, "SELECT `userID` FROM `Searches` WHERE `searchSpecialist` LIKE '%".$lvl[1]."%' ");
+            $skill = mysqli_fetch_array($usersCheck);
 
             $userNames = "";
             $counter = 0;
 
-            foreach ($skillCheck as $key => $value) {
+            foreach ($usersCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
                     if ($value != $user) {
@@ -2968,7 +3222,7 @@ if (isset($data['callback_query'])) {
             sendTelegram('deleteMessage', $send_data);
 
             // Делаем проверку. Если не нашлось ничего, то выводим сообщение, что никого не нашли, но когда будут появляться люди - мы напишем
-            if (empty($skill['userID'])) {
+            if (empty($userNames)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "_Мы не нашли людей, которым нужен_ *".$lvl[1]."* _,но когда они появятся - вы получите уведомление_",
@@ -2987,12 +3241,12 @@ if (isset($data['callback_query'])) {
                 return;
             }else{
                 // Пушим список айдишек в БД
-                mysqli_query ($con, "UPDATE `BOT` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
 
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$ids[0]."' ");
+                $profCheck = mysqli_query ($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
                 $prof = mysqli_fetch_array($profCheck);
 
                 // Если кол-во найденных профилей = 1
@@ -3000,7 +3254,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -3020,7 +3274,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -3048,7 +3302,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -3071,7 +3325,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -3117,16 +3371,16 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Trainee', 'callback_data' => 'Трейни,' . $prof]  
+                            ['text' => 'Trainee(Учусь)', 'callback_data' => 'Трейни,' . $prof]  
                         ],
                         [
-                            ['text' => 'Junior', 'callback_data' => 'Джуниор,' . $prof]  
+                            ['text' => 'Junior(Начинающий)', 'callback_data' => 'Джуниор,' . $prof]  
                         ],
                         [
-                            ['text' => 'Middle', 'callback_data' => 'Мидл,' . $prof]  
+                            ['text' => 'Middle(Средний уровень)', 'callback_data' => 'Мидл,' . $prof]  
                         ],
                         [
-                            ['text' => 'Senior', 'callback_data' => 'Сеньор,' . $prof]  
+                            ['text' => 'Senior(Профессионал)', 'callback_data' => 'Сеньор,' . $prof]  
                         ],
                         [
                             ['text' => '👈 Вурнуться к выбору категории', 'callback_data' => 'clientsFinder']  
@@ -3135,16 +3389,19 @@ if (isset($data['callback_query'])) {
                 ]
             ];
     }
+    // Поиск с кем обучаться в регистрации
     else if (strpos($data['callback_query']['data'], 'firstch') !== false) {
         $user = $func['from']['id'];
         // Удаляем ch из профессии
         $chWord = $data['callback_query']['data'];
         $word = preg_replace("/firstch/i", "", $chWord);
 
-        $skill = "Trainee - " . trim($word);
+        $skill = trim($word);
 
-        // Пушим новый массив в БД
-        $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$skill."' WHERE userID = ".$user." ");
+        // Пушим в БД
+        mysqli_query ($con, "UPDATE `Skills` SET s1 = '".$skill."', lvl1 = 'Trainee' WHERE userID = ".$user." ");
+        mysqli_query ($con, "UPDATE `SkillAdds` SET search1 = 'С кем обучаться' WHERE userID = ".$user." ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchLearn`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
         $method = 'sendMessage';
@@ -3161,17 +3418,19 @@ if (isset($data['callback_query'])) {
             ]
         ];
     }
-
+    // Поиск клиентов в регистрации
     else if (strpos($data['callback_query']['data'], 'secondch') !== false) {
         $user = $func['from']['id'];
         // Удаляем ch из профессии
         $chWord = $data['callback_query']['data'];
-        $word = preg_replace("/firstch/i", "", $chWord);
+        $word = preg_replace("/secondch/i", "", $chWord);
 
-        $skill = "Senior - " . trim($word);
+        $skill = trim($word);
 
-        // Пушим новый массив в БД
-        $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userSkills = '".$skill."' WHERE userID = ".$user." ");
+        // Пушим в БД
+        mysqli_query ($con, "UPDATE `Skills` SET s1 = '".$skill."', lvl1 = 'Senior' WHERE userID = ".$user." ");
+        mysqli_query ($con, "UPDATE `SkillAdds` SET search1 = 'Ищу клиентов' WHERE userID = ".$user." ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchClients`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
         $method = 'sendMessage';
@@ -3189,6 +3448,7 @@ if (isset($data['callback_query'])) {
         ];
     }
 
+    // Поиск специалиста в регистрации
     else if (strpos($data['callback_query']['data'], 'thirdch') !== false) {
         $user = $func['from']['id'];
         // Удаляем ch из профессии
@@ -3198,7 +3458,7 @@ if (isset($data['callback_query'])) {
         $skill = trim($word);
 
         // Пушим кого человек ищет в БД
-        $updateDB = mysqli_query ($con, "UPDATE `BOT` SET imSearching = '".$skill."' WHERE userID = ".$user." ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchSpecialist`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
         $method = 'sendMessage';
@@ -3219,35 +3479,34 @@ if (isset($data['callback_query'])) {
     elseif (strpos($data['callback_query']['data'], 'fourthch') !== false) {
         // Поиск в БД такой ценности
         $user = $func['from']['id'];
-        $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID = ".$user." ");
-        $needs = mysqli_fetch_array($needsCheck);
+        $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID = ".$user." ");
+        $needs = mysqli_fetch_row($needsCheck);
 
         // Удаляем ch из ценностей
         $chWord = $data['callback_query']['data'];
         $word = preg_replace("/fourthch/i", "", $chWord);
         $word = trim($word);
 
-        // Создаем массив из ценностей
-        $needsArray = explode(",", $needs['userNeeds']);
-        $msgArray = "";
-
-        if (strpos($needs['userNeeds'], $word) !== false) {
+        if (trim($needs[0]) == $word or trim($needs[1]) == $word or trim($needs[2]) == $word or trim($needs[3]) == $word or trim($needs[4]) == $word or strpos($needs[5], $word) !== false) {
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($needs as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgArray .= trim($value) . "\n";
                 }
             }
             $method = 'editMessageText';
@@ -3315,9 +3574,10 @@ if (isset($data['callback_query'])) {
             return;
         }else{
             // Если это будет первая ценность в профиле
-            if (empty($needs['userNeeds'])) {
+            if (empty($needs[0]) and empty($needs[1]) and empty($needs[2]) and empty($needs[3]) and empty($needs[4]) and empty($needs[5])) {
+                
                 // Пушим новую ценность в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$word."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Needs` SET n1 = '".$word."' WHERE userID = ".$user." ");                
 
                 $method = 'editMessageText';
                 $send_data = [
@@ -3384,48 +3644,35 @@ if (isset($data['callback_query'])) {
             }
             // Если у человека уже были ценности
             else{
-                // Создаем новый список ценностей
-                $new = $needs['userNeeds'] . ", " . $word;
-
-                // Преобразуем новый список ценностей в массив
-                $newArray = explode(", ", $new);
-
-                // Проверяем кол-во ценностей, если = 5 и человек не получал награду, то 
-                if (count($newArray) == 5 and $rewards['NeedsReward'] == 0) {
+                if (empty($needs[0])) {
+                    // Пушим новую ценность в БД
+                    mysqli_query ($con, "UPDATE `Needs` SET n1 = '".$word."' WHERE userID = ".$user." ");
+                }else if (empty($needs[1])) {
+                    // Пушим новую ценность в БД
+                    mysqli_query ($con, "UPDATE `Needs` SET n2 = '".$word."' WHERE userID = ".$user." ");
+                }else if (empty($needs[2])) {
+                    // Пушим новую ценность в БД
+                    mysqli_query ($con, "UPDATE `Needs` SET n3 = '".$word."' WHERE userID = ".$user." ");
+                }else if (empty($needs[3])) {
+                    // Пушим новую ценность в БД
+                    mysqli_query ($con, "UPDATE `Needs` SET n4 = '".$word."' WHERE userID = ".$user." ");
+                }else if (empty($needs[4])) {
+                    // Пушим новую ценность в БД
+                    mysqli_query ($con, "UPDATE `Needs` SET n5 = '".$word."' WHERE userID = ".$user." ");
+                    // Проверяем кол-во ценностей, если = 5 и человек не получал награду, то 
+                if ($rewards['NeedsReward'] == 0) {
                     // Пушим, что дали награду
                     mysqli_query ($con, "UPDATE `userRewards` SET NeedsReward = 1 WHERE userID = ".$user." ");
 
                     // Получаем кол-во монет пользователя
-                    $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
+                    $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
                     $coins = mysqli_fetch_array($selectCoins);
 
                     // Плюсуем к монетам награду
-                    $coins = $coins['userCoins'] + 100;
+                    $coins = $coins['coins'] + 100;
 
                     // Выдаем монеты
-                    mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
-                    
-                    // Пушим новый список в БД
-                    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$new."' WHERE userID = ".$user." ");
-
-                    // Выводим ценности в правильном виде
-                    foreach ($newArray as $key => $value) {
-                        if ($key == 0) {
-                            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 1) {
-                            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 2) {
-                            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 3) {
-                            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 4) {
-                            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                    }
+                    mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
                     $method = 'editMessageText';
                     $send_data = [
@@ -3434,11 +3681,10 @@ if (isset($data['callback_query'])) {
                     $send_data['chat_id'] = $func['message']['chat']['id'];
                     $send_data['message_id'] = $func['message']['message_id'];
                     sendTelegram($method, $send_data);
-
                     // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
                     $method = 'sendMessage';
                     $send_data = [
-                        'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для знакомств',
+                        'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для поиска специалиста',
                         'reply_markup' => [
                             resize_keyboard =>true,
                             one_time_keyboard => true,
@@ -3448,112 +3694,136 @@ if (isset($data['callback_query'])) {
                                 ]
                             ]
                         ]
-                    ];    
-                }else{
-                    // Пушим новый список в БД
-                    $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userNeeds = '".$new."' WHERE userID = ".$user." ");
-
-                    // Выводим ценности в правильном виде
-                    foreach ($newArray as $key => $value) {
-                        if ($key == 0) {
-                            $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 1) {
-                            $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 2) {
-                            $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 3) {
-                            $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                        if ($key == 4) {
-                            $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                        }
-                    }
-
-                    $method = 'editMessageText';
-                    $send_data = [
-                        'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nМои ценности:\n" . $msgArray . "\n\nВыберите 5 ценностей начиная с самой важной:",
-                        'reply_markup' => [
-                            'inline_keyboard' => [
-                                [
-                                    ['text' => 'Здоровье', 'callback_data' => 'Здоровье fourthch']
-                                ],
-                                [
-                                    ['text' => 'Карьера', 'callback_data' => 'Карьера fourthch']
-                                ],
-                                [
-                                    ['text' => 'Семья', 'callback_data' => 'Семья fourthch']
-                                ],
-                                [
-                                    ['text' => 'Богатство', 'callback_data' => 'Богатство fourthch']
-                                ],
-                                [
-                                    ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие fourthch']
-                                ],
-                                [
-                                    ['text' => 'Спорт', 'callback_data' => 'Спорт fourthch']
-                                ],
-                                [
-                                    ['text' => 'Осознанность', 'callback_data' => 'Осознанность fourthch']
-                                ],
-                                [
-                                    ['text' => 'Развитие', 'callback_data' => 'Развитие fourthch']
-                                ],
-                                [
-                                    ['text' => 'Свобода', 'callback_data' => 'Свобода fourthch']
-                                ],
-                                [
-                                    ['text' => 'Миссия', 'callback_data' => 'Миссия fourthch']
-                                ],
-                                [
-                                    ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми fourthch']
-                                ],
-                                [
-                                    ['text' => 'Любовь', 'callback_data' => 'Любовь fourthch']
-                                ],
-                                [
-                                    ['text' => 'Амбиции', 'callback_data' => 'Амбиции fourthch']
-                                ],
-                                [
-                                    ['text' => 'Отдых', 'callback_data' => 'Отдых fourthch']
-                                ],
-                                [
-                                    ['text' => 'Благодарность', 'callback_data' => 'Благодарность fourthch']
-                                ],
-                                [
-                                    ['text' => 'Принятие', 'callback_data' => 'Принятие fourthch']
-                                ],
-                                [
-                                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
-                                ]
-                            ]
-                        ]
                     ];
                     $send_data['chat_id'] = $func['message']['chat']['id'];
                     $send_data['message_id'] = $func['message']['message_id'];
                     sendTelegram($method, $send_data);
+                    return;
+                }else{
+                    if (empty($needs[5])) {
+                        // Пушим новую ценность в БД
+                        mysqli_query ($con, "UPDATE `Needs` SET n6 = '".$word."' WHERE userID = ".$user." "); 
+                    }else{
+                        $newN6 = $needs[5] . ", " . $word;
+                        // Пушим новую ценность в БД
+                        mysqli_query ($con, "UPDATE `Needs` SET n6 = '".$newN6."' WHERE userID = ".$user." ");
+                    }
                 }
+                $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID = ".$user." ");
+                $needs = mysqli_fetch_row($needsCheck);
+
+                // Выводим ценности в правильном виде
+                foreach ($needs as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgArray .= trim($value) . "\n";
+                    }
+                }
+
+                $method = 'editMessageText';
+                $send_data = [
+                    'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nМои ценности:\n" . $msgArray . "\n\nВыберите 5 ценностей начиная с самой важной:",
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье fourthch']
+                            ],
+                            [
+                                ['text' => 'Карьера', 'callback_data' => 'Карьера fourthch']
+                            ],
+                            [
+                                ['text' => 'Семья', 'callback_data' => 'Семья fourthch']
+                            ],
+                            [
+                                ['text' => 'Богатство', 'callback_data' => 'Богатство fourthch']
+                            ],
+                            [
+                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие fourthch']
+                            ],
+                            [
+                                ['text' => 'Спорт', 'callback_data' => 'Спорт fourthch']
+                            ],
+                            [
+                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность fourthch']
+                            ],
+                            [
+                                ['text' => 'Развитие', 'callback_data' => 'Развитие fourthch']
+                            ],
+                            [
+                                ['text' => 'Свобода', 'callback_data' => 'Свобода fourthch']
+                            ],
+                            [
+                                ['text' => 'Миссия', 'callback_data' => 'Миссия fourthch']
+                            ],
+                            [
+                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми fourthch']
+                            ],
+                            [
+                                ['text' => 'Любовь', 'callback_data' => 'Любовь fourthch']
+                            ],
+                            [
+                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции fourthch']
+                            ],
+                            [
+                                ['text' => 'Отдых', 'callback_data' => 'Отдых fourthch']
+                            ],
+                            [
+                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность fourthch']
+                            ],
+                            [
+                                ['text' => 'Принятие', 'callback_data' => 'Принятие fourthch']
+                            ],
+                            [
+                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
+                            ]
+                        ]
+                    ]
+                ];
+                $send_data['chat_id'] = $func['message']['chat']['id'];
+                $send_data['message_id'] = $func['message']['message_id'];
+                sendTelegram($method, $send_data);
             }
         }
     }
-
+}
+    // Поиск с кем вместе обучаться
     else if (strpos($data['callback_query']['data'], 's2erch') !== false) {
-        // Узнаем сколько у человека _навыка_ введено в профиле
+        // Узнаем сколько у человека навыков введено в профиле
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query(
-            $con,
-            "SELECT `userInterests`, `userNeeds`, `userName`, `userSkills`, `Sex`, `userAge` FROM `BOT` WHERE userID = " . $user . " "
-        );
+        $intsCheck = mysqli_query($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = " . $user . " ");
         $ints = mysqli_fetch_array($intsCheck);
 
-        $interests = explode(" , ", $ints['userSkills']);
-        $intCount = count($interests);
-        $number = 5 - $intCount;
+        $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
+        $interests = mysqli_fetch_row($interestsCheck);
+
+        $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
+        $skills = mysqli_fetch_row($skillsCheck);
+
+        $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
+        $needs = mysqli_fetch_row($needsCheck);
 
             // Если навыков меньше 5, тогда выводим сообщение, что нужно еще ввести интересы, чтоб 
-        if ($intCount < 5) {
+        if (empty($skills)) {
+            $number = 0;
+            foreach ($skills as $key => $value) {
+                if ($value == "") {
+                    $number += 1;
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
                 'text' => "_Для того чтобы искать людей, вам нужно добавить еще_ " . "*" . $number . "*" . " _навыков_",
@@ -3576,35 +3846,42 @@ if (isset($data['callback_query'])) {
             $needToComplete = "";
 
                 // Подготавливаем перечень для заполнения пустых ячеек в профиле
-            if (empty($ints['userInterests'])) {
+            if (empty($interests)) {
                 if ($needToComplete == "") {
                     $needToComplete .= "интересы";
                 } else {
                     $needToComplete .= ", интересы";
                 }
             }
-            if (empty($ints['userNeeds'])) {
+            if (empty($needs)) {
                 if ($needToComplete == "") {
                     $needToComplete .= "ценности";
                 } else {
                     $needToComplete .= ", ценности";
                 }
             }
-            if (empty($ints['userName'])) {
+            if (empty($ints['name'])) {
                 if ($needToComplete == "") {
                     $needToComplete .= "имя";
                 } else {
                     $needToComplete .= ", имя";
                 }
             }
-            if (empty($ints['userSkills'])) {
+            if (empty($ints['surname'])) {
+                if ($needToComplete == "") {
+                    $needToComplete .= "фамилию";
+                } else {
+                    $needToComplete .= ", фамилию";
+                }
+            }
+            if (empty($skills)) {
                 if ($needToComplete == "") {
                     $needToComplete .= "навыки";
                 } else {
                     $needToComplete .= ", навыки";
                 }
             }
-            if (empty($ints['Sex'])) {
+            if (empty($ints['sex'])) {
                 if ($needToComplete == "") {
                     $needToComplete .= "пол";
                 } else {
@@ -3624,7 +3901,7 @@ if (isset($data['callback_query'])) {
             $search = trim($search);
 
                 // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
-            if (empty($ints['userNeeds']) or empty($ints['userName']) or empty($ints['userInterests']) or empty($ints['userSkills']) or empty($ints['Sex']) or empty($ints['userAge'])) {
+            if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
                 $method = 'editMessageText';
                 $send_data = [
                     'text' => "_Мы запомнили ваш поиск и когда будут появляться люди с такими навыками, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще:_ " . $needToComplete,
@@ -3645,7 +3922,7 @@ if (isset($data['callback_query'])) {
                 sendTelegram($method, $send_data);
             } else {
                     // Поиск в БД по запросу
-                $skillCheck = mysqli_query($con, "SELECT `userID` FROM `BOT` WHERE `userSkills` LIKE '%" . $search . "%' ");
+                $skillCheck = mysqli_query($con, "SELECT `userID` FROM `Skills` WHERE (`s1` LIKE '%" . $search . "%') OR (`s2` LIKE '%" . $search . "%') OR (`s3` LIKE '%" . $search . "%') OR (`s4` LIKE '%" . $search . "%') OR (`s5` LIKE '%" . $search . "%') ");
                 $skill = mysqli_fetch_array($skillCheck);
 
                 $userNames = "";
@@ -3672,7 +3949,7 @@ if (isset($data['callback_query'])) {
                 sendTelegram('deleteMessage', $send_data);
 
                 // Делаем проверку. Если не нашлось ничего, то выводим сообщение, что никого не нашли, но когда будут появляться люди - мы напишем
-                if (empty($skill['userID'])) {
+                if (empty($userNames)) {
                     $method = 'sendMessage';
                     $send_data = [
                         'text' => "_Мы не нашли людей с навыком_ *" . $search . "* _,но когда они появятся - вы получите уведомление_",
@@ -3691,15 +3968,12 @@ if (isset($data['callback_query'])) {
                     return;
                 } else {
                     // Пушим список айдишек в БД
-                    mysqli_query($con, "UPDATE `BOT` SET searchIDs = '" . $userNames . "' WHERE userID = " . $user . " ");
+                    mysqli_query($con, "UPDATE `TrackingMenu` SET searchIDs = '" . $userNames . "' WHERE userID = " . $user . " ");
 
                     $ids = explode(',', $userNames);
 
                     // Выводим данные первого человека
-                    $profCheck = mysqli_query(
-                        $con,
-                        "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='" . $ids[0] . "' "
-                    );
+                    $profCheck = mysqli_query($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
                     $prof = mysqli_fetch_array($profCheck);
 
                     // Если кол-во найденных профилей = 1
@@ -3707,7 +3981,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -3727,7 +4001,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -3755,7 +4029,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -3778,7 +4052,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -3810,57 +4084,73 @@ if (isset($data['callback_query'])) {
             }
         }
     }
-
+    // Поиск второй половинки
     else if (strpos($data['callback_query']['data'], 'SexSe3rch') !== false) {
-        // Поиск в БД
+        // Узнаем сколько у человека навыков введено в профиле
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests`, `userNeeds`, `userName`, `userSkills`, `Sex`, `userAge` FROM `BOT` WHERE userID = ".$user." ");
+        $intsCheck = mysqli_query($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = " . $user . " ");
         $ints = mysqli_fetch_array($intsCheck);
+
+        $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
+        $interests = mysqli_fetch_row($interestsCheck);
+
+        $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
+        $skills = mysqli_fetch_row($skillsCheck);
+
+        $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
+        $needs = mysqli_fetch_row($needsCheck);
 
         $needToComplete = "";
 
         // Подготавливаем перечень для заполнения пустых ячеек в профиле
-        if (empty($ints['userInterests'])) {
+        if (empty($interests)) {
             if ($needToComplete == "") {
                 $needToComplete .= "интересы";
-            }else{
+            } else {
                 $needToComplete .= ", интересы";
-            }    
+            }
         }
-        if (empty($ints['userNeeds'])) {
+        if (empty($needs)) {
             if ($needToComplete == "") {
                 $needToComplete .= "ценности";
-            }else{
+            } else {
                 $needToComplete .= ", ценности";
-            }  
+            }
         }
-        if (empty($ints['userName'])) {
+        if (empty($ints['name'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "имя";
-            }else{
+            } else {
                 $needToComplete .= ", имя";
-            } 
+            }
         }
-        if (empty($ints['userSkills'])) {
+        if (empty($ints['surname'])) {
+            if ($needToComplete == "") {
+                $needToComplete .= "фамилию";
+            } else {
+                $needToComplete .= ", фамилию";
+            }
+        }
+        if (empty($skills)) {
             if ($needToComplete == "") {
                 $needToComplete .= "навыки";
-            }else{
+            } else {
                 $needToComplete .= ", навыки";
-            } 
+            }
         }
-        if (empty($ints['Sex'])) {
+        if (empty($ints['sex'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "пол";
-            }else{
+            } else {
                 $needToComplete .= ", пол";
-            } 
+            }
         }
         if (empty($ints['userAge'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "возраст";
-            }else{
+            } else {
                 $needToComplete .= ", возраст";
-            } 
+            }
         }
 
         // Узнаем что человек искал
@@ -3868,7 +4158,7 @@ if (isset($data['callback_query'])) {
         $search = trim($search);
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
-        if (empty($ints['userNeeds']) or empty($ints['userName']) or empty($ints['userInterests']) or empty($ints['userSkills']) or empty($ints['Sex']) or empty($ints['userAge'])) {
+        if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
             $method = 'editMessageText';
             $send_data = [
                 'text' => "_Мы запомнили ваш поиск и когда будут появляться люди с такой ценностью, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще:_ " . $needToComplete,
@@ -3889,7 +4179,7 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
         }else{
             // Поиск в БД по запросу
-            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `BOT` WHERE `userNeeds` LIKE '%".$search."%' ");
+            $skillCheck = mysqli_query($con, "SELECT `userID` FROM `Needs` WHERE (`n1` LIKE '%" . $search . "%') OR (`n2` LIKE '%" . $search . "%') OR (`n3` LIKE '%" . $search . "%') OR (`n4` LIKE '%" . $search . "%') OR (`n5` LIKE '%" . $search . "%') ");
             $skill = mysqli_fetch_array($skillCheck);
 
             $userNames = "";
@@ -3916,7 +4206,7 @@ if (isset($data['callback_query'])) {
             sendTelegram('deleteMessage', $send_data);
 
             // Делаем проверку. Если не нашлось ничего, то выводим сообщение, что никого не нашли, но когда будут появляться люди - мы напишем
-            if (empty($skill['userID'])) {
+            if (empty($userNames)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "_Мы не нашли людей с ценностью_ *".$search."* _,но когда они появятся - вы получите уведомление_",
@@ -3935,20 +4225,20 @@ if (isset($data['callback_query'])) {
                 return;
             }else{
                 // Пушим список айдишек в БД
-                mysqli_query ($con, "UPDATE `BOT` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
 
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$ids[0]."' ");
-                $prof = mysqli_fetch_array($profCheck);
+                    $profCheck = mysqli_query($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
+                    $prof = mysqli_fetch_array($profCheck);
 
                 // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -3968,7 +4258,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -3996,7 +4286,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -4019,7 +4309,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -4054,18 +4344,18 @@ if (isset($data['callback_query'])) {
     else if (strpos($data['callback_query']['data'], 'int') !== false) {
         // Поиск в БД такого навыка
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID = ".$user." ");
-        $ints = mysqli_fetch_array($intsCheck);
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+        $ints = mysqli_fetch_row($intsCheck);
 
         // Удаляем слово int из профессии
         $word = $data['callback_query']['data'];
         $int = preg_replace("/int/i", "", $word);
 
         // Если такое хобби у человека уже есть
-        if (strpos($ints['userInterests'], $int) !== false) {
+        if ($ints[0] == $int or $ints[1] == $int or $ints[2] == $int or $ints[3] == $int or $ints[4] == $int or strpos($ints[5], $int) !== false) {
             $method = 'editMessageText';
             $send_data = [
-                'text' => 'Упс! Кажется ' . trim($int) . " уже есть у вас в профиле\n\nСейчас список ваших хобби выглядит так: " . $ints['userInterests'],
+                'text' => 'Упс! Кажется ' . trim($int) . " уже есть у вас в профиле",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -4082,9 +4372,9 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data); 
         }else{
             // Если это будет первый интерес в профиле
-            if (empty($ints['userInterests'])) {
+            if (empty($ints[0])) {
                 // Пушим новый интерес в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$int."' WHERE userID = ".$user." ");
+                $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest1 = '".$int."' WHERE userID = ".$user." ");
 
                 // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
                 $method = 'editMessageText';
@@ -4111,31 +4401,101 @@ if (isset($data['callback_query'])) {
             }
             // Если какие-то интересы в профиле у человека уже были
             else{
-                // Добавляем к старым интересам новый
-                $pushInsterests = $ints['userInterests'] . " , " . $int;
+                if (empty($ints[1])) {
+                    // Пушим новый интерес в БД
+                    $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest2 = '".$int."' WHERE userID = ".$user." ");
 
-                // Преобразуем строку интересов в массив
-                $InerestsArray = explode(",", $pushInsterests);
+                    $method = 'editMessageText';
+                    $send_data = [
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                                ]
+                            ]
+                        ]
+                    ];
+                    $send_data['chat_id'] = $func['message']['chat']['id'];
+                    $send_data['message_id'] = $func['message']['message_id'];
+                    sendTelegram($method, $send_data);
+                    return;
+                }else if (empty($ints[2])) {
+                    // Пушим новый интерес в БД
+                    $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest3 = '".$int."' WHERE userID = ".$user." ");
 
-                    // Если общее кол-во интересов = 5 и награда = 0, тогда даем награду
-                    if (count($InerestsArray) == 5 and $rewards['InterestsReward'] == 0) {
+                    $method = 'editMessageText';
+                    $send_data = [
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                                ]
+                            ]
+                        ]
+                    ];
+                    $send_data['chat_id'] = $func['message']['chat']['id'];
+                    $send_data['message_id'] = $func['message']['message_id'];
+                    sendTelegram($method, $send_data);
+                    return;
+                }else if (empty($ints[3])) {
+                    // Пушим новый интерес в БД
+                    $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest4 = '".$int."' WHERE userID = ".$user." ");
+                    $method = 'editMessageText';
+                    $send_data = [
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                                ]
+                            ]
+                        ]
+                    ];
+                    $send_data['chat_id'] = $func['message']['chat']['id'];
+                    $send_data['message_id'] = $func['message']['message_id'];
+                    sendTelegram($method, $send_data);
+                    return;
+                }else if (empty($ints[4])) {
+                    // Пушим новый интерес в БД
+                    $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest5 = '".$int."' WHERE userID = ".$user." ");
+                    if ($rewards['InterestsReward'] == 0) {
                         // Пушим, что дали награду
                         mysqli_query ($con, "UPDATE `userRewards` SET InterestsReward = 1 WHERE userID = ".$user." ");
 
                         // Получаем кол-во монет пользователя
-                        $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
+                        $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
                         $coins = mysqli_fetch_array($selectCoins);
 
                         // Плюсуем к монетам награду
-                        $coins = $coins['userCoins'] + 100;
+                        $coins = $coins['coins'] + 100;
 
                         // Выдаем монеты
-                        mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
+                        mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
                         // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
                         $method = 'editMessageText';
                         $send_data = [
-                            'text' => "Отлично! Вы добавили ".$int." в список своих интересов\n\nСейчас список ваших интересов выглядит так: " . $pushInsterests . "\n\nВы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
+                            'text' => "Отлично! Вы добавили ".$int." в список своих интересов\n\nВы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -4155,84 +4515,87 @@ if (isset($data['callback_query'])) {
                         sendTelegram($method, $send_data);
                         return;
                     }
-
-                // Пушим новый массив в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$pushInsterests."' WHERE userID = ".$user." ");
-
-                // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Отлично! Вы добавили ".$int." в список своих интересов\n\nСейчас список ваших интересов выглядит так: " . $pushInsterests,
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
-                            ],
-                            [
-                                ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
-                            ]
-                        ]
-                    ]
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-            }
-        }     
+                }else{
+                    if (empty($ints[5])) {
+                        // Пушим новый интерес в БД
+                        mysqli_query ($con, "UPDATE `Interests` SET interest6 = '".$int."' WHERE userID = ".$user." ");
+                    }else{
+                        $pints = $ints[5] . "," . $int;
+                        // Пушим новый интерес в БД
+                        mysqli_query ($con, "UPDATE `Interests` SET interest6 = '".$pints."' WHERE userID = ".$user." ");
+                    }
+                }
+            } 
+        }
     }
+
+    // Поиск с кем интересно провести время
     else if (strpos($data['callback_query']['data'], 'serch') !== false) {
-        // Поиск в БД такого навыка
+        // Узнаем сколько у человека навыков введено в профиле
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests`, `userNeeds`, `userName`, `userSkills`, `Sex`, `userAge` FROM `BOT` WHERE userID = ".$user." ");
+        $intsCheck = mysqli_query($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = " . $user . " ");
         $ints = mysqli_fetch_array($intsCheck);
+
+        $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
+        $interests = mysqli_fetch_row($interestsCheck);
+
+        $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
+        $skills = mysqli_fetch_row($skillsCheck);
+
+        $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
+        $needs = mysqli_fetch_row($needsCheck);
 
         $needToComplete = "";
 
         // Подготавливаем перечень для заполнения пустых ячеек в профиле
-        if (empty($ints['userInterests'])) {
+        if (empty($interests)) {
             if ($needToComplete == "") {
                 $needToComplete .= "интересы";
-            }else{
+            } else {
                 $needToComplete .= ", интересы";
-            }    
+            }
         }
-        if (empty($ints['userNeeds'])) {
+        if (empty($needs)) {
             if ($needToComplete == "") {
                 $needToComplete .= "ценности";
-            }else{
+            } else {
                 $needToComplete .= ", ценности";
-            }  
+            }
         }
-        if (empty($ints['userName'])) {
+        if (empty($ints['name'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "имя";
-            }else{
+            } else {
                 $needToComplete .= ", имя";
-            } 
+            }
         }
-        if (empty($ints['userSkills'])) {
+        if (empty($ints['surname'])) {
+            if ($needToComplete == "") {
+                $needToComplete .= "фамилию";
+            } else {
+                $needToComplete .= ", фамилию";
+            }
+        }
+        if (empty($skills)) {
             if ($needToComplete == "") {
                 $needToComplete .= "навыки";
-            }else{
+            } else {
                 $needToComplete .= ", навыки";
-            } 
+            }
         }
-        if (empty($ints['Sex'])) {
+        if (empty($ints['sex'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "пол";
-            }else{
+            } else {
                 $needToComplete .= ", пол";
-            } 
+            }
         }
         if (empty($ints['userAge'])) {
             if ($needToComplete == "") {
                 $needToComplete .= "возраст";
-            }else{
+            } else {
                 $needToComplete .= ", возраст";
-            } 
+            }
         }
 
         // Узнаем что человек искал
@@ -4240,7 +4603,7 @@ if (isset($data['callback_query'])) {
         $search = trim($search);
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
-        if (empty($ints['userNeeds']) or empty($ints['userName']) or empty($ints['userInterests']) or empty($ints['userSkills']) or empty($ints['Sex']) or empty($ints['userAge'])) {
+        if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
             $method = 'editMessageText';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким интересом, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
@@ -4260,7 +4623,7 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
         }else{
             // Поиск в БД по запросу
-            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `BOT` WHERE `userInterests` LIKE '%".$search."%' ");
+            $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `Interests` WHERE (`interest1` LIKE '%" . $search . "%') OR (`interest2` LIKE '%" . $search . "%') OR (`interest3` LIKE '%" . $search . "%') OR (`interest4` LIKE '%" . $search . "%') OR (`interest5` LIKE '%" . $search . "%') ");
             $skill = mysqli_fetch_array($skillCheck);
 
             $userNames = "";
@@ -4287,7 +4650,7 @@ if (isset($data['callback_query'])) {
             sendTelegram('deleteMessage', $send_data);
 
             // Делаем проверку. Если не нашлось ничего, то выводим сообщение, что никого не нашли, но когда будут появляться люди - мы напишем
-            if (empty($skill['userID'])) {
+            if (empty($userNames)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "_Мы не нашли людей с интересом_ *".$search."* _,но когда они появятся - вы получите уведомление_",
@@ -4306,12 +4669,12 @@ if (isset($data['callback_query'])) {
                 return;
             }else{
                 // Пушим список айдишек в БД
-                mysqli_query ($con, "UPDATE `BOT` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
 
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$ids[0]."' ");
+                $profCheck = mysqli_query ($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
                 $prof = mysqli_fetch_array($profCheck);
 
                 // Если кол-во найденных профилей = 1
@@ -4319,7 +4682,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -4339,7 +4702,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -4367,7 +4730,7 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'reply_markup' => [
                                 'inline_keyboard' => [
@@ -4390,7 +4753,7 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
+                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
@@ -4429,7 +4792,7 @@ if (isset($data['callback_query'])) {
 
         // Достаем из БД id найденных профилей
         $user = $func['from']['id'];
-        $profIDs = mysqli_query ($con, "SELECT `searchIDs` FROM `BOT` WHERE userID='".$user."' ");
+        $profIDs = mysqli_query ($con, "SELECT `searchIDs` FROM `TrackingMenu` WHERE userID='".$user."' ");
         $ids = mysqli_fetch_array($profIDs);
 
         // Создаем массив из id найденных профилей 
@@ -4454,7 +4817,7 @@ if (isset($data['callback_query'])) {
         sendTelegram('deleteMessage', $send_data);
 
         // Подключаемся к БД и берем данные новой id
-        $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$id."' ");
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$id."' ");
         $prof = mysqli_fetch_array($profCheck);
 
         // Если это первый профиль в списке, то не даем возможности листать назад
@@ -4463,7 +4826,7 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -4486,7 +4849,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
@@ -4518,7 +4881,7 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -4542,7 +4905,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
@@ -4580,7 +4943,7 @@ if (isset($data['callback_query'])) {
 
         // Достаем из БД id найденных профилей
         $user = $func['from']['id'];
-        $profIDs = mysqli_query ($con, "SELECT `searchIDs` FROM `BOT` WHERE userID='".$user."' ");
+        $profIDs = mysqli_query ($con, "SELECT `searchIDs` FROM `TrackingMenu` WHERE userID='".$user."' ");
         $ids = mysqli_fetch_array($profIDs);
 
         // Создаем массив из id найденных профилей 
@@ -4605,7 +4968,7 @@ if (isset($data['callback_query'])) {
         sendTelegram('deleteMessage', $send_data);
 
         // Подключаемся к БД и берем данные новой id
-        $profCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `userSkills`, `userInterests`, `userNeeds`, `userPhoto`, `tgUserName` FROM `BOT` WHERE userID='".$id."' ");
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$id."' ");
         $prof = mysqli_fetch_array($profCheck);
 
         // Если это последний профиль в списке, то не даем возможности листать дальше
@@ -4614,7 +4977,7 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -4637,7 +5000,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
@@ -4669,7 +5032,7 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -4693,7 +5056,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Навыки:_ ".$prof['userSkills']."\n\n_Интересы:_ ".$prof['userInterests']."\n\n_Ценности:_ ".$prof['userNeeds'] . "\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
+                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
                     "parse_mode" => "Markdown",
                     'photo' => curl_file_create("../tgbot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
@@ -4731,15 +5094,15 @@ if (isset($data['callback_query'])) {
         $sex = preg_replace("/SexOnReg/i", "", $data['callback_query']['data']);
 
         // Пушим пол в БД
-        mysqli_query ($con, "UPDATE `BOT` SET Sex = '".$sex."' WHERE userID=".$user." ");
+        mysqli_query ($con, "UPDATE `MainInfo` SET sex = '".$sex."' WHERE userID=".$user." ");
 
         // Вывод ценностей пользователя
-        $userNeeds = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-        $needs = mysqli_fetch_array($userNeeds);
+        $userNeeds = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+        $needs = mysqli_fetch_row($userNeeds);
 
         $msgArray = "";
 
-        if (empty($needs['userNeeds'])) {
+        if (empty($needs)) {
             $method = 'editMessageText';
             $send_data = [
                 'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nВыберите 5 ценностей начиная с самой важной:",
@@ -4803,154 +5166,86 @@ if (isset($data['callback_query'])) {
             $send_data['message_id'] = $func['message']['message_id'];
             sendTelegram($method, $send_data);
         }else{
-            $need = explode("," , $needs['userNeeds']);
-            // Если всего 1 ценность
-            if ($need == false) {
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nСейчас ваш список выглядит так:\n" . "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($needs['userNeeds']) . "\n\nВыберите 5 ценностей начиная с самой важной:",
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье fourthch']
-                            ],
-                            [
-                                ['text' => 'Карьера', 'callback_data' => 'Карьера fourthch']
-                            ],
-                            [
-                                ['text' => 'Семья', 'callback_data' => 'Семья fourthch']
-                            ],
-                            [
-                                ['text' => 'Богатство', 'callback_data' => 'Богатство fourthch']
-                            ],
-                            [
-                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие fourthch']
-                            ],
-                            [
-                                ['text' => 'Спорт', 'callback_data' => 'Спорт fourthch']
-                            ],
-                            [
-                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность fourthch']
-                            ],
-                            [
-                                ['text' => 'Развитие', 'callback_data' => 'Развитие fourthch']
-                            ],
-                            [
-                                ['text' => 'Свобода', 'callback_data' => 'Свобода fourthch']
-                            ],
-                            [
-                                ['text' => 'Миссия', 'callback_data' => 'Миссия fourthch']
-                            ],
-                            [
-                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми fourthch']
-                            ],
-                            [
-                                ['text' => 'Любовь', 'callback_data' => 'Любовь fourthch']
-                            ],
-                            [
-                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции fourthch']
-                            ],
-                            [
-                                ['text' => 'Отдых', 'callback_data' => 'Отдых fourthch']
-                            ],
-                            [
-                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность fourthch']
-                            ],
-                            [
-                                ['text' => 'Принятие', 'callback_data' => 'Принятие fourthch']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
-                            ]
-                        ]
-                    ]
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-            }else{
-                
-                // Перебираем массив с ценностями для правильного вывода
-                foreach ($need as $key => $value) {
-                    if ($key == 0) {
-                        $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 1) {
-                        $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 2) {
-                        $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 3) {
-                        $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    } 
-                    if ($key == 4) {
-                        $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }  
+            // Перебираем массив с ценностями для правильного вывода
+            foreach ($needs as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nСейчас твой список выглядит так:\n" . $msgArray . "\nВыберите 5 ценностей начиная с самой важной:",
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье fourthch']
-                            ],
-                            [
-                                ['text' => 'Карьера', 'callback_data' => 'Карьера fourthch']
-                            ],
-                            [
-                                ['text' => 'Семья', 'callback_data' => 'Семья fourthch']
-                            ],
-                            [
-                                ['text' => 'Богатство', 'callback_data' => 'Богатство fourthch']
-                            ],
-                            [
-                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие fourthch']
-                            ],
-                            [
-                                ['text' => 'Спорт', 'callback_data' => 'Спорт fourthch']
-                            ],
-                            [
-                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность fourthch']
-                            ],
-                            [
-                                ['text' => 'Развитие', 'callback_data' => 'Развитие fourthch']
-                            ],
-                            [
-                                ['text' => 'Свобода', 'callback_data' => 'Свобода fourthch']
-                            ],
-                            [
-                                ['text' => 'Миссия', 'callback_data' => 'Миссия fourthch']
-                            ],
-                            [
-                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми fourthch']
-                            ],
-                            [
-                                ['text' => 'Любовь', 'callback_data' => 'Любовь fourthch']
-                            ],
-                            [
-                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции fourthch']
-                            ],
-                            [
-                                ['text' => 'Отдых', 'callback_data' => 'Отдых fourthch']
-                            ],
-                            [
-                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность fourthch']
-                            ],
-                            [
-                                ['text' => 'Принятие', 'callback_data' => 'Принятие fourthch']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
-                            ]
+                if ($key == 1 and !empty($value)) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 2 and !empty($value)) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 3 and !empty($value)) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                } 
+                if ($key == 4 and !empty($value)) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }  
+            }
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nСейчас твой список выглядит так:\n" . $msgArray . "\nВыберите 5 ценностей начиная с самой важной:",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Здоровье', 'callback_data' => 'Здоровье fourthch']
+                        ],
+                        [
+                            ['text' => 'Карьера', 'callback_data' => 'Карьера fourthch']
+                        ],
+                        [
+                            ['text' => 'Семья', 'callback_data' => 'Семья fourthch']
+                        ],
+                        [
+                            ['text' => 'Богатство', 'callback_data' => 'Богатство fourthch']
+                        ],
+                        [
+                            ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие fourthch']
+                        ],
+                        [
+                            ['text' => 'Спорт', 'callback_data' => 'Спорт fourthch']
+                        ],
+                        [
+                            ['text' => 'Осознанность', 'callback_data' => 'Осознанность fourthch']
+                        ],
+                        [
+                            ['text' => 'Развитие', 'callback_data' => 'Развитие fourthch']
+                        ],
+                        [
+                            ['text' => 'Свобода', 'callback_data' => 'Свобода fourthch']
+                        ],
+                        [
+                            ['text' => 'Миссия', 'callback_data' => 'Миссия fourthch']
+                        ],
+                        [
+                            ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми fourthch']
+                        ],
+                        [
+                            ['text' => 'Любовь', 'callback_data' => 'Любовь fourthch']
+                        ],
+                        [
+                            ['text' => 'Амбиции', 'callback_data' => 'Амбиции fourthch']
+                        ],
+                        [
+                            ['text' => 'Отдых', 'callback_data' => 'Отдых fourthch']
+                        ],
+                        [
+                            ['text' => 'Благодарность', 'callback_data' => 'Благодарность fourthch']
+                        ],
+                        [
+                            ['text' => 'Принятие', 'callback_data' => 'Принятие fourthch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
                         ]
                     ]
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-            }     
+                ]
+            ];
+            $send_data['chat_id'] = $func['message']['chat']['id'];
+            $send_data['message_id'] = $func['message']['message_id'];
+            sendTelegram($method, $send_data);   
         }
         return;
     }
@@ -4958,24 +5253,32 @@ if (isset($data['callback_query'])) {
     else if (strpos($data['callback_query']['data'], 'tni') !== false) {
         // Поиск в БД такого навыка
         $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID = ".$user." ");
-        $ints = mysqli_fetch_array($intsCheck);
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5` FROM `Interests` WHERE userID = ".$user." ");
+        $ints = mysqli_fetch_row($intsCheck);
 
         // Удаляем слово int из профессии
         $word = $data['callback_query']['data'];
         $int = preg_replace("/tni/i", "", $word);
 
         // Узнаем сколько интересов добавил человек
-        $intCount = explode(", ", $ints['userInterests']);
-        $a = count($intCount) + 1;
+        $a = count($ints) + 1;
 
         $msgArray = "";
+        $str = "";
+
+        foreach ($ints as $key => $value) {
+            if ($str = "") {
+                $str .= $value;
+            }else{
+                $str .= "," . $value;
+            }
+        }
 
         // Если такое хобби у человека уже есть
-        if (strpos($ints['userInterests'], trim($int)) !== false) {
+        if ($ints[0] == trim($int) or $ints[1] == trim($int) or $ints[2] == trim($int) or $ints[3] == trim($int) or $ints[4] == trim($int)) {
             $method = 'editMessageText';
             $send_data = [
-                'text' => 'Упс! У вас уже есть ' . trim($int) . " в списке интересов\n\nСейчас список ваших интересов выглядит так: " . $ints['userInterests'],
+                'text' => 'Упс! У вас уже есть ' . trim($int) . " в списке интересов\n\nСейчас список ваших интересов выглядит так: " . $str,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -4989,9 +5292,9 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data); 
         }else{
             // Если это будет первый интерес в профиле
-            if (empty($ints['userInterests'])) {
+            if (empty($ints[0])) {
                 // Пушим новый интерес в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".trim($int)."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Interests` SET interest1 = '".trim($int)."' WHERE userID = ".$user." ");
 
                 $method = 'editMessageText';
                 $send_data = [
@@ -5021,36 +5324,20 @@ if (isset($data['callback_query'])) {
             }
             // Если больше 1 но меньше 5
             if ($a <= 4) {
-                // Добавляем к старым интересам новый
-                $pushInsterests = $ints['userInterests'] . ", " . trim($int);
-
-                // Пушим новый массив в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$pushInsterests."' WHERE userID = ".$user." ");
-
-                $intCount = explode("," , $pushInsterests);
-
-
-                // Перебираем массив с интересами для правильного вывода
-                foreach ($intCount as $key => $value) {
-                    if ($key == 0) {
-                        $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 1) {
-                        $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 2) {
-                        $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 3) {
-                        $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    } 
-                    if ($key == 4) {
-                        $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    } 
+                if (empty($ints[1])) {
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest2 = '".trim($int)."' WHERE userID = ".$user." ");
+                }else if (empty($ints[2])) {
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest3 = '".trim($int)."' WHERE userID = ".$user." ");
+                }else{
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest4 = '".trim($int)."' WHERE userID = ".$user." ");
                 }
+
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nСейчас у вас указано:\n" . $msgArray . "\n\nВыбери категорию:",
+                    'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nСейчас у вас указано:\n" . $str . "\n\nВыбери категорию:",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -5074,47 +5361,25 @@ if (isset($data['callback_query'])) {
             }
             // Если 5 интерес
             if ($a == 5){
-                // Добавляем к старым интересам новый
-                $pushInsterests = $ints['userInterests'] . ", " . trim($int);
-                $IntArray = explode(",", $pushInsterests);
+                // Пушим новый интерес в БД
+                mysqli_query ($con, "UPDATE `Interests` SET interest5 = '".trim($int)."' WHERE userID = ".$user." ");
 
                 // Пушим, что дали награду
                 mysqli_query ($con, "UPDATE `userRewards` SET InterestsReward = 1 WHERE userID = ".$user." ");
 
                 // Получаем кол-во монет пользователя
-                $selectCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
+                $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
                 $coins = mysqli_fetch_array($selectCoins);
 
                 // Плюсуем к монетам награду
-                $coins = $coins['userCoins'] + 100;
+                $coins = $coins['coins'] + 100;
 
                 // Выдаем монеты
-                mysqli_query ($con, "UPDATE `BOT` SET userCoins = '".$coins."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
-                // Пушим новый массив в БД
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET userInterests = '".$pushInsterests."' WHERE userID = ".$user." ");
-
-                // Перебираем массив с интересами для правильного вывода
-                foreach ($IntArray as $key => $value) {
-                    if ($key == 0) {
-                        $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 1) {
-                        $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 2) {
-                        $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }
-                    if ($key == 3) {
-                        $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    } 
-                    if ($key == 4) {
-                        $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
-                    }   
-                }
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои интересы:\n" . $msgArray . "\n\nВы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
+                    'text' => "Вы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
                 ];
                 $send_data['chat_id'] = $func['message']['chat']['id'];
                 $send_data['message_id'] = $func['message']['message_id'];
@@ -5141,44 +5406,10 @@ if (isset($data['callback_query'])) {
     else{
         switch($data['callback_query']['data']) {
 
-        /*case "assadsdasadsdasdasd":
-
-            $method = 'sendPhoto';
-            $send_data = [
-                'text' => "😁 *Мой профиль*\n\n_Имя и Фамилия:_ ".$prof['userName']."\n\n_Возраст:_ ".$prof['userAge']."\n\n_Мои навыки:_ ".$prof['userSkills']."\n\n_Мои интересы:_ ".$prof['userInterests']."\n\n_Мои ценности:_ ".$prof['userNeeds'],
-                "parse_mode" => "Markdown",
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '🤴 Личные данные', 'callback_data' => 'myNameAge']  
-                        ],
-                        [
-                            ['text' => '🧑‍💻 Мои навыки', 'callback_data' => 'mySkills']
-                        ],
-                        [
-                            ['text' => '🚲 Мои интересы', 'callback_data' => 'myInterests']
-                        ],
-                        [
-                            ['text' => '📝 Мои ценности', 'callback_data' => 'myNeeds']
-                        ],
-                        [
-                            ['text' => 'Мои соцсети', 'callback_data' => 'mySocial']
-                        ],
-                        [
-                            ['text' => '🗣 Реферальная ссылка', 'callback_data' => 'myAffiliate']
-                        ],
-                        [
-                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
-                        ]
-                    ]
-                ]
-            ];
-            break;*/
-
         case 'mySocial':
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             // Удаляем сообщение с профилем
@@ -5188,7 +5419,7 @@ if (isset($data['callback_query'])) {
 
             $method = 'sendMessage';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -5221,7 +5452,7 @@ if (isset($data['callback_query'])) {
 
         case 'instSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `inst` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `inst` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['inst'])) {
@@ -5264,7 +5495,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить инсту':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET inst = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET inst = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой instagram из профиля',
@@ -5285,7 +5516,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить инсту':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'инста' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'инста' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -5305,7 +5536,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить инстаграм':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -5336,14 +5567,14 @@ if (isset($data['callback_query'])) {
                 }
 
                 // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -5379,7 +5610,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -5393,19 +5624,20 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', inst = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Socials` SET inst = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -5438,7 +5670,7 @@ if (isset($data['callback_query'])) {
 
         case 'tikSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `tiktok` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `tiktok` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['tiktok'])) {
@@ -5481,7 +5713,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить tiktok':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET tiktok = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET tiktok = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой tiktok из профиля',
@@ -5502,7 +5734,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить tiktok':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'tiktok' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'tiktok' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -5522,7 +5754,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить tiktok':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -5553,14 +5785,14 @@ if (isset($data['callback_query'])) {
                 }
 
                 // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -5596,7 +5828,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -5610,19 +5842,20 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', tiktok = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Socials` SET tiktok = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -5655,7 +5888,7 @@ if (isset($data['callback_query'])) {
 
         case 'fbSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `facebook` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `facebook` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['facebook'])) {
@@ -5698,7 +5931,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить facebook':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET facebook = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET facebook = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой facebook из профиля',
@@ -5719,7 +5952,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить facebook':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'facebook' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'facebook' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -5739,7 +5972,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить facebook':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -5770,14 +6003,14 @@ if (isset($data['callback_query'])) {
                 }
 
                 // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -5813,7 +6046,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -5827,19 +6060,20 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', facebook = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Socials` SET facebook = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -5872,7 +6106,7 @@ if (isset($data['callback_query'])) {
 
         case 'viberSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `viber` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `viber` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['viber'])) {
@@ -5915,7 +6149,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить viber':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET viber = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET viber = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой viber из профиля',
@@ -5936,7 +6170,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить viber':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'viber' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'viber' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -5956,7 +6190,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить viber':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -5987,14 +6221,14 @@ if (isset($data['callback_query'])) {
                 }
 
                 // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -6030,7 +6264,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -6044,19 +6278,20 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', viber = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Socials` SET viber = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -6089,7 +6324,7 @@ if (isset($data['callback_query'])) {
 
         case 'wtsSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `whatsapp` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `whatsapp` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['whatsapp'])) {
@@ -6132,7 +6367,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить whatsapp':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whatsapp = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET whatsapp = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой whatsapp из профиля',
@@ -6153,7 +6388,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить whatsapp':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'whatsapp' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'whatsapp' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -6173,7 +6408,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить whatsapp':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -6204,14 +6439,14 @@ if (isset($data['callback_query'])) {
                 }
 
                 // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -6247,7 +6482,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -6261,19 +6496,20 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', whatsapp = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `Socials` SET whatsapp = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
             // Получаем из БД все о пользователе
             $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -6306,7 +6542,7 @@ if (isset($data['callback_query'])) {
 
         case 'anotherSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['anotherSocial'])) {
@@ -6328,7 +6564,7 @@ if (isset($data['callback_query'])) {
             }else{
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => 'Изменить мой anotherSocial ' . $prof['anotherSocial'],
+                    'text' => 'Изменить мой anotherSocial ' . $prof['anotherSocials'],
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -6349,7 +6585,7 @@ if (isset($data['callback_query'])) {
 
         case 'Удалить anotherSocial':
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET anotherSocial = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `Socials` SET anotherSocials = '' WHERE userID = ".$user." ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => 'Вы успешно удалили свой anotherSocial из профиля',
@@ -6370,7 +6606,7 @@ if (isset($data['callback_query'])) {
         case 'Добавить anotherSocial':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'anotherSocial' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'anotherSocial' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -6390,7 +6626,7 @@ if (isset($data['callback_query'])) {
 
         case 'Сохранить anotherSocial':
             $user = $func['from']['id'];
-            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `BOT` WHERE userID='".$user."' ");
+            $profCheck = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $prof = mysqli_fetch_array($profCheck);
 
             if (empty($prof['rowsToDel'])) {
@@ -6420,15 +6656,15 @@ if (isset($data['callback_query'])) {
                     sendTelegram('deleteMessage', $send_data);
                 }
 
-                // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
+                    // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
                 
-                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                    'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                     'disable_web_page_preview' => true,
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -6463,14 +6699,14 @@ if (isset($data['callback_query'])) {
         case 'Отменить anotherSocial':
             $user = $func['from']['id'];
 
-            // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `BOT` WHERE userID='".$user."' ");
+                // Получаем id всех сообщений, отправленных пользователем
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldNeeds` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
-            // Создаем массив из строк для удаления
+                // Создаем массив из строк для удаления
             $rowArray = explode(" , ", $row['rowsToDel']);
 
-            // Удаляем все сообщения в чате
+                // Удаляем все сообщения в чате
             $send_data['chat_id'] = $user;
             foreach ($rowArray as $value) {
                 $send_data['message_id'] = $value;
@@ -6478,19 +6714,19 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldNeeds'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
-                // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldNeeds = '', anotherSocial = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                    // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
+                mysqli_query ($con, "UPDATE `Socials` SET anotherSocials = '".$row['oldNeeds']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldNeeds = '' WHERE userID = ".$user." ");
             }
-            // Получаем из БД все о пользователе
-            $user = $func['from']['id'];
-            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocial` FROM `BOT` WHERE userID='".$user."' ");
+                // Получаем из БД все о пользователе
+            $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocial'],
+                'text' => "Мои социальные сети:\n\n" . "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
                 'disable_web_page_preview' => true,
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -6523,13 +6759,13 @@ if (isset($data['callback_query'])) {
 
         case 'myCoins':
             $user = $func['from']['id'];
-            $userCoins = mysqli_query ($con, "SELECT `userCoins` FROM `BOT` WHERE userID='".$user."' ");
+            $userCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
             $coins = mysqli_fetch_array($userCoins);
 
-            if ($coins['userCoins'] == "") {
+            if ($coins['coins'] == "") {
                 $coins = 0;
             }else{
-                $coins = $coins['userCoins'];
+                $coins = $coins['coins'];
             }
 
             $method = 'editMessageText';
@@ -6628,11 +6864,6 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'enterestsFinder':
-            // Подключаемся к базе и проверяем сколько интересов у человека
-            $user = $func['from']['id'];
-            $intCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $int = mysqli_fetch_array($intCheck);
-
             $method = 'editMessageText';
             $send_data = [
                 'text' => "🔎🚲 *С кем интересно провести время*\n\n_Выберите категорию для поиска нужного человека_",
@@ -6969,10 +7200,10 @@ if (isset($data['callback_query'])) {
 
         case 'needsFinder':
             $user = $func['from']['id'];
-            $sexCheck = mysqli_query ($con, "SELECT `Sex` FROM `BOT` WHERE userID='".$user."' ");
-            $sex = mysqli_fetch_array($sexCheck);
+            $sexCheck = mysqli_query ($con, "SELECT `sex` FROM `MainInfo` WHERE userID='".$user."' ");
+            $sex = mysqli_fetch_row($sexCheck);
 
-            if (empty($sex['Sex'])) {
+            if (empty($sex)) {
                 $method = 'editMessageText';
                 $send_data = [
                     'text' => "🔎❤️ *Вторую половинку*\n\n_Укажите свой пол_",
@@ -7024,17 +7255,25 @@ if (isset($data['callback_query'])) {
         case 'Женский SexSe1rch':
             // Пушим пол человека в БД
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET Sex = 'Женский' WHERE userID = ".$user." ");
-
+            $updateDB = mysqli_query ($con, "UPDATE `MainInfo` SET sex = 'Женский' WHERE userID = ".$user." ");
+            
             // Проверяем сколько у человека выбрано ценностей и если меньше 5, даем добавить себе ценности
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
-            $needsCount = explode("," , $needs['userNeeds']);
-            $number = 5 - count($needsCount);
-            if (count($needsCount) < 5) {
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
+
+            $count = 5;
+            $n = 0;
+            foreach ($needs as $key => $value) {
+                if (!empty($value)) {
+                    $count -= 1;
+                    $n = $n + 1;
+                }
+            }
+
+            if ($n < 5) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $number ."*". " _ценностей_",
+                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $count ."*". " _ценностей_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -7121,18 +7360,25 @@ if (isset($data['callback_query'])) {
         case 'Мужской SexSe1rch':
             // Пушим пол человека в БД
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET Sex = 'Мужской' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `MainInfo` SET sex = 'Мужской' WHERE userID = ".$user." ");
             
             // Проверяем сколько у человека выбрано ценностей и если меньше 5, даем добавить себе ценности
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
-            $needsCount = explode("," , $needs['userNeeds']);
-            $number = 5 - count($needsCount);
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
+            
+            $count = 5;
+            $n = 0;
+            foreach ($needs as $key => $value) {
+                if (!empty($value)) {
+                    $count -= 1;
+                    $n = $n + 1;
+                }
+            }
 
-            if (count($needsCount) < 5) {
+            if ($n < 5) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $number ."*". " _ценностей_",
+                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $count ."*". " _ценностей_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -7219,15 +7465,22 @@ if (isset($data['callback_query'])) {
         case 'Женский SexSe2rch':
             // Проверяем сколько у человека выбрано ценностей и если меньше 5, даем добавить себе ценности
             $user = $func['from']['id'];
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
-            $needsCount = explode("," , $needs['userNeeds']);
-            $number = 5 - count($needsCount);
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
 
-            if (count($needsCount) < 5) {
+            $count = 5;
+            $n = 0;
+            foreach ($needs as $key => $value) {
+                if (!empty($value)) {
+                    $count -= 1;
+                    $n = $n + 1;
+                }
+            }
+
+            if ($n < 5) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $number ."*". " _ценностей_",
+                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $count ."*". " _ценностей_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -7314,15 +7567,22 @@ if (isset($data['callback_query'])) {
         case 'Мужской SexSe2rch':
             // Проверяем сколько у человека выбрано ценностей и если меньше 5, даем добавить себе ценности
             $user = $func['from']['id'];
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
-            $needsCount = explode("," , $needs['userNeeds']);
-            $number = 5 - count($needsCount);
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
 
-            if (count($needsCount) < 5) {
+            $count = 5;
+            $n = 0;
+            foreach ($needs as $key => $value) {
+                if (!empty($value)) {
+                    $count -= 1;
+                    $n = $n + 1;
+                }
+            }
+
+            if ($n < 5) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $number ."*". " _ценностей_",
+                    'text' => "_Для того чтобы искать вторую половинку, вам нужно добавить еще_ " ."*". $count ."*". " _ценностей_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -7587,7 +7847,7 @@ if (isset($data['callback_query'])) {
         case 'mainMenu':
             // Выводим человека из всех меню
             $user = $func['from']['id'];
-            mysqli_query($con, "UPDATE `BOT` SET whichMenu = '' WHERE userID = '".$user."' ");
+            mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = '".$user."' ");
 
             // Удаляем сообщение с профилем
             $send_data['message_id'] = $data['callback_query']['message']['message_id'];
@@ -7632,7 +7892,7 @@ if (isset($data['callback_query'])) {
         case 'feedback':
             // Записываем, что человек находится в меню ФИДБЭК
             $user = $func['from']['id'];
-            mysqli_query($con, "UPDATE `BOT` SET whichMenu = 'ФИДБЭК', mesToChange = '".$data['callback_query']['message']['message_id']."' WHERE userID = '".$user."' ");
+            mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = 'ФИДБЭК', mesToChange = '".$data['callback_query']['message']['message_id']."' WHERE userID = '".$user."' ");
             $method = 'editMessageText';
             $send_data = [
                 'text' => "🗣️ *Сообщить об идее/ошибке*\n\n_Напиши мне о своей идее или о проблеме с которой ты столкнулся._",
@@ -8119,7 +8379,7 @@ if (isset($data['callback_query'])) {
 
         case 'myAffiliate':
             $user = $func['from']['id']; 
-            $inviteCheck = mysqli_query ($con, "SELECT `userInvite` FROM `BOT` WHERE userID='".$user."' ");
+            $inviteCheck = mysqli_query ($con, "SELECT `inviteLink` FROM `MainInfo` WHERE userID='".$user."' ");
             $invite = mysqli_fetch_array($inviteCheck);
             
             // Удаляем сообщение с профилем
@@ -8142,34 +8402,38 @@ if (isset($data['callback_query'])) {
 
         case 'myNeeds':
             $user = $func['from']['id']; 
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
 
-            $needsArray = explode("," , $needs['userNeeds']);
             $msgText2 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => 'Добавить ценности', 'callback_data' => 'pushNeeds')));
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($needs as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText2 .= trim($value) . "\n";
                 }
             }
 
-            foreach ($needsArray as $key => $value) {
-                array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value."1134")));
+            foreach ($needs as $key => $value) {
+                if (!empty($value)) {
+                    array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value."1134")));
+                }
             }
             
             // Удаляем сообщение с профилем
@@ -8177,7 +8441,7 @@ if (isset($data['callback_query'])) {
             $send_data['chat_id'] = $user;
             sendTelegram('deleteMessage', $send_data);
 
-            if (empty($needs['userNeeds'])) {
+            if (empty($needs)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "📝 *Мои ценности*",
@@ -8211,10 +8475,10 @@ if (isset($data['callback_query'])) {
 
         case 'pushNeeds':
             $user = $func['from']['id']; 
-            $needsCheck = mysqli_query ($con, "SELECT `userNeeds` FROM `BOT` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_array($needsCheck);
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
 
-            if (empty($needs['userNeeds'])) {
+            if (empty($needs)) {
                 $method = 'editMessageText';
                 $send_data = [
                     'text' => "📝 *Мои ценности*\n\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
@@ -8279,25 +8543,26 @@ if (isset($data['callback_query'])) {
                 $send_data['message_id'] = $func['message']['message_id'];
                 sendTelegram($method, $send_data);
             }else{
-
-                $needsArray = explode("," , $needs['userNeeds']);
                 $msgText2 = "";
                 // Выводим ценности в правильном виде
-                foreach ($needsArray as $key => $value) {
-                    if ($key == 0) {
+                foreach ($needs as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
                         $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                     }
-                    if ($key == 1) {
+                    if ($key == 1 and !empty($value)) {
                         $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                     }
-                    if ($key == 2) {
+                    if ($key == 2 and !empty($value)) {
                         $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                     }
-                    if ($key == 3) {
+                    if ($key == 3 and !empty($value)) {
                         $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                     }
-                    if ($key == 4) {
+                    if ($key == 4 and !empty($value)) {
                         $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText2 .= trim($value) . "\n";
                     }
                 }
 
@@ -8464,34 +8729,38 @@ if (isset($data['callback_query'])) {
 
         case 'myInterests':
             $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
 
-            $interestsArray = explode("," , $interests['userInterests']);
             $msgText3 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить интересы', 'callback_data' => 'pushInterests')));
+            array_push($btnsArray, array(array('text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests')));
             // Выводим ценности в правильном виде
-            foreach ($interestsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
-            foreach ($interestsArray as $key => $value) {
-                array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value." 1135")));
+            foreach ($interests as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value." 1135")));
+                }
             }
 
             // Удаляем сообщение с меню
@@ -8499,7 +8768,7 @@ if (isset($data['callback_query'])) {
             $send_data['chat_id'] = $user;
             sendTelegram('deleteMessage', $send_data);
 
-            if (empty($interests['userInterests'])) {
+            if (empty($interests)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "🚲 Мои интересы:" ,
@@ -8528,33 +8797,35 @@ if (isset($data['callback_query'])) {
 
         case 'pushInterests':
             $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
 
-            $interestsArray = explode("," , $interests['userInterests']);
             $msgText3 = "";
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "У вас указаны такие интересы: " . $msgText3 . "\nВыбери категорию:" ,
+                'text' => "У вас указаны такие интересы: \n" . $msgText3 . "\nВыбери категорию:" ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -8577,34 +8848,36 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'Развлечения':
-            $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
+           $user = $func['from']['id']; 
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
 
-            $interestsArray = explode("," , $interests['userInterests']);
             $msgText3 = "";
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "У вас указаны такие интересы: " . $msgText3 . "\nВыбери интерес:" ,
+                'text' => "У вас указаны такие интересы: \n" . $msgText3 . "\nВыбери интерес:" ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -8649,33 +8922,35 @@ if (isset($data['callback_query'])) {
 
         case 'Развлечения2':
             $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
-            
-            $interestsArray = explode("," , $interests['userInterests']);
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
+
             $msgText3 = "";
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "У вас указаны такие интересы: " . $msgText3 . "\nВыбери интерес:" ,
+                'text' => "У вас указаны такие интересы: \n" . $msgText3 . "\nВыбери интерес:" ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -8714,33 +8989,35 @@ if (isset($data['callback_query'])) {
 
         case 'Бизнес':
             $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
 
-            $interestsArray = explode("," , $interests['userInterests']);
             $msgText3 = "";
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "У вас указаны такие интересы: " . $msgText3 . "\nВыбери интерес:" ,
+                'text' => "У вас указаны такие интересы: \n" . $msgText3 . "\nВыбери интерес:" ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -8779,33 +9056,35 @@ if (isset($data['callback_query'])) {
 
         case 'Спорт':
             $user = $func['from']['id']; 
-            $interestsCheck = mysqli_query ($con, "SELECT `userInterests` FROM `BOT` WHERE userID='".$user."' ");
-            $interests = mysqli_fetch_array($interestsCheck);
+            $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $interests = mysqli_fetch_row($interestsCheck);
 
-            $interestsArray = explode("," , $interests['userInterests']);
             $msgText3 = "";
             // Выводим ценности в правильном виде
-            foreach ($needsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($interests as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= trim($value) . "\n";
                 }
             }
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "У вас указаны такие интересы: " . $msgText3 . "\nВыбери интерес:" ,
+                'text' => "У вас указаны такие интересы: \n" . $msgText3 . "\nВыбери интерес:" ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9156,7 +9435,7 @@ if (isset($data['callback_query'])) {
 
         case 'myNameAge':
             $user = $func['from']['id']; 
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
 
             // Удаляем сообщение с профилем
@@ -9166,20 +9445,21 @@ if (isset($data['callback_query'])) {
 
             $method = 'sendMessage';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
                         ],
                         [
                             ['text' => 'Указать пол', 'callback_data' => 'changeSex']
-                        ],
-                        [
-                            ['text' => 'Добавить фотографию', 'callback_data' => 'plusPhoto']
                         ],
                         [
                             ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -9193,7 +9473,7 @@ if (isset($data['callback_query'])) {
             // Пушим что человек находится в меню добавления фото
             $user = $func['from']['id'];
             $mes = $data['callback_query']['message']['message_id'];
-            mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$mes."' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$mes."' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -9221,7 +9501,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Мужской', 'callback_data' => 'Мужской Sex']
                         ],
                         [
-                            ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
+                            ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'myNameAge']
                         ]
                     ]
                 ]
@@ -9235,19 +9515,23 @@ if (isset($data['callback_query'])) {
             $sex = preg_replace("/Sex/i", "", $data['callback_query']['data']);
 
             // Пушим пол в БД
-            mysqli_query ($con, "UPDATE `BOT` SET Sex = '".trim($sex)."' WHERE userID=".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET sex = '".trim($sex)."' WHERE userID=".$user." ");
 
             // Возвращаем человека в меню "Личные данные"
             $user = $func['from']['id']; 
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9270,19 +9554,23 @@ if (isset($data['callback_query'])) {
             $sex = preg_replace("/Sex/i", "", $data['callback_query']['data']);
 
             // Пушим пол в БД
-            mysqli_query ($con, "UPDATE `BOT` SET Sex = '".trim($sex)."' WHERE userID=".$user." ");
+            mysqli_query ($con, "UPDATE `MainInfo` SET sex = '".trim($sex)."' WHERE userID=".$user." ");
 
             // Возвращаем человека в меню "Личные данные"
             $user = $func['from']['id']; 
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9301,7 +9589,7 @@ if (isset($data['callback_query'])) {
         case 'changeAge':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'Изменить возраст' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'Изменить возраст' WHERE userID = ".$user." ");
 
             $method = 'editMessageText';
             $send_data = [
@@ -9323,7 +9611,9 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Подключаемся к БД и получаем все id сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `userAge` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
+            $checkAge = mysqli_query ($con, "SELECT `userAge` FROM `MainInfo` WHERE userID='".$user."' ");
+            $age = mysqli_fetch_array($checkAge);
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -9337,18 +9627,22 @@ if (isset($data['callback_query'])) {
             }
 
             // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldAge = '' WHERE userID = ".$user." ");
+            mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldAge = '' WHERE userID = ".$user." ");
 
             // Возвращаем человека в меню "Личные данные"
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9368,7 +9662,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldAge` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldAge` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -9382,22 +9676,155 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldAge'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldAge = '', userAge = '".$row['oldAge']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `MainInfo` SET userAge = '".$row['oldAge']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldAge = '' WHERE userID = ".$user." ");
             }
 
             // Возвращаем человека в меню "Личные данные"
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
+                        ],
+                        [
+                            ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
+                        ],
+                        [
+                            ['text' => 'Указать пол', 'callback_data' => 'changeSex']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'changeSurname':
+            // Пушим в каком меню находится человек
+            $user = $func['from']['id'];
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ФамилияИмя' WHERE userID = ".$user." ");
+
+            // Подключаемся к БД и получаем name
+            $rowsToDelete = mysqli_query ($con, "SELECT `surname` FROM `MainInfo` WHERE userID='".$user."' ");
+            $row = mysqli_fetch_array($rowsToDelete);
+
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "Отправь мне свою фамилию, а после нажми кнопку 'Сохранить'.\n! Учитываться будет только последнее отправленное сообщение !\nПример: Тарас\n\nСейчас у вас указано: " . $row['surname'] ,
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Сохранить', 'callback_data' => 'Сохранить фамилию']  
+                        ],
+                        [
+                            ['text' => 'Отмена', 'callback_data' => 'Отменить фамилию']  
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'Сохранить фамилию':
+            $user = $func['from']['id'];
+
+            // Подключаемся к БД и получаем все id сообщений, отправленных пользователем
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
+            $row = mysqli_fetch_array($rowsToDelete);
+
+            // Создаем массив из строк для удаления
+            $rowArray = explode(" , ", $row['rowsToDel']);
+
+            // Удаляем все сообщения в чате
+            $send_data['chat_id'] = $user;
+            foreach ($rowArray as $value) {
+                $send_data['message_id'] = $value;
+                sendTelegram('deleteMessage', $send_data);
+            }
+
+            // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldName = '' WHERE userID = ".$user." ");
+
+            // Возвращаем человека в меню "Личные данные"
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
+            $name = mysqli_fetch_array($nameCheck);
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
+                        ],
+                        [
+                            ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
+                        ],
+                        [
+                            ['text' => 'Указать пол', 'callback_data' => 'changeSex']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'Отменить фамилию':
+            $user = $func['from']['id'];
+
+            // Получаем id всех сообщений, отправленных пользователем
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldName` FROM `TrackingMenu` WHERE userID='".$user."' ");
+            $row = mysqli_fetch_array($rowsToDelete);
+
+            // Создаем массив из строк для удаления
+            $rowArray = explode(" , ", $row['rowsToDel']);
+
+            // Удаляем все сообщения в чате
+            $send_data['chat_id'] = $user;
+            foreach ($rowArray as $value) {
+                $send_data['message_id'] = $value;
+                sendTelegram('deleteMessage', $send_data);
+            }
+
+            if (empty($row['oldName'])) {
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+            }else{
+                // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
+                mysqli_query ($con, "UPDATE `MainInfo` SET surname = '".$row['oldName']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldName = '' WHERE userID = ".$user." ");
+            }
+
+            // Возвращаем человека в меню "Личные данные"
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
+            $name = mysqli_fetch_array($nameCheck);
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9416,15 +9843,15 @@ if (isset($data['callback_query'])) {
         case 'changeName':
             // Пушим в каком меню находится человек
             $user = $func['from']['id'];
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET whichMenu = 'ИмяФамилия' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ИмяФамилия' WHERE userID = ".$user." ");
 
             // Подключаемся к БД и получаем name
-            $rowsToDelete = mysqli_query ($con, "SELECT `userName` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `name` FROM `MainInfo` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Отправь мне свое Имя и Фамилию, а после нажми кнопку 'Сохранить'.\n! Учитываться будет только последнее отправленное сообщение !\nПример: Тарас Шевченко\n\nСейчас у вас указано: " . $row['userName'] ,
+                'text' => "Отправь мне свое Имя и Фамилию, а после нажми кнопку 'Сохранить'.\n! Учитываться будет только последнее отправленное сообщение !\nПример: Тарас\n\nСейчас у вас указано: " . $row['name'] ,
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9442,7 +9869,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Подключаемся к БД и получаем все id сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `userName` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -9456,18 +9883,22 @@ if (isset($data['callback_query'])) {
             }
 
             // Удаляем информацию о том, в каком меню человек, а также убираем все id сообщений из БД и старые интересы
-            $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldName = '' WHERE userID = ".$user." ");
+            $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldName = '' WHERE userID = ".$user." ");
 
             // Возвращаем человека в меню "Личные данные"
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9487,7 +9918,7 @@ if (isset($data['callback_query'])) {
             $user = $func['from']['id'];
 
             // Получаем id всех сообщений, отправленных пользователем
-            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldName` FROM `BOT` WHERE userID='".$user."' ");
+            $rowsToDelete = mysqli_query ($con, "SELECT `rowsToDel`, `oldName` FROM `TrackingMenu` WHERE userID='".$user."' ");
             $row = mysqli_fetch_array($rowsToDelete);
 
             // Создаем массив из строк для удаления
@@ -9501,22 +9932,27 @@ if (isset($data['callback_query'])) {
             }
 
             if (empty($row['oldName'])) {
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '' WHERE userID = ".$user." ");
             }else{
                 // Убираем все удаленные сообщения из БД и информацию о том, в каком меню человек
-                $updateDB = mysqli_query ($con, "UPDATE `BOT` SET rowsToDel = '', whichMenu = '', oldName = '', userName = '".$row['oldName']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `MainInfo` SET name = '".$row['oldName']."' WHERE userID = ".$user." ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET rowsToDel = '', whichMenu = '', oldName = '' WHERE userID = ".$user." ");
             }
 
             // Возвращаем человека в меню "Личные данные"
-            $nameCheck = mysqli_query ($con, "SELECT `userName`, `userAge`, `Sex` FROM `BOT` WHERE userID='".$user."' ");
+            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
             $name = mysqli_fetch_array($nameCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "🤴 Личные данные:\n\nИмя и Фамилия: " . $name['userName'] . "\nВозраст: " . $name['userAge'] . "\nПол: " . $name['Sex'],
+                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Изменить Имя и Фамилию', 'callback_data' => 'changeName']
+                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                        ],
+                        [
+                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
                         ],
                         [
                             ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
@@ -9662,35 +10098,50 @@ if (isset($data['callback_query'])) {
 
         case 'mySkills':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
 
-            $interestsArray = explode("," , $skills['userSkills']);
+            $arrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить навыки', 'callback_data' => 'choiceSkills')));
+            array_push($btnsArray, array(array('text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills')));
             // Выводим ценности в правильном виде
-            foreach ($interestsArray as $key => $value) {
-                if ($key == 0) {
+            foreach ($skills as $key => $value) {
+                if ($key == 0 and !empty($value)) {
                     $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 1) {
+                if ($key == 1 and !empty($value)) {
                     $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 2) {
+                if ($key == 2 and !empty($value)) {
                     $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 3) {
+                if ($key == 3 and !empty($value)) {
                     $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
-                if ($key == 4) {
+                if ($key == 4 and !empty($value)) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $skills6 = explode("," , $value);
+                    foreach ($skills6 as $key => $value) {
+                        $skill6 = explode(")", $value);
+                        $msgText3 .= trim($skill6[1]) . "\n";
+                        array_push($arrTo6, $skill6[1]);
+                    }
                 }
             }
 
-            foreach ($interestsArray as $key => $value) {
-                $ar = explode("-", $value);
-                array_push($btnsArray, array(array('text' => 'Удалить '.trim($ar[1]), 'callback_data' => trim($ar[1])." 1133")));
+            foreach ($skills as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
+                }else{
+                    if (!empty($value)) {
+                        foreach ($arrTo6 as $key => $value) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        }
+                    }
+                }
             }
 
             // Удаляем сообщение с меню
@@ -9698,7 +10149,7 @@ if (isset($data['callback_query'])) {
             $send_data['chat_id'] = $user;
             sendTelegram('deleteMessage', $send_data);
 
-            if (empty($skills['userSkills'])) {
+            if (empty($skills)) {
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "🧑‍💻 Мои навыки" ,
@@ -9727,11 +10178,21 @@ if (isset($data['callback_query'])) {
 
         case 'ITSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9794,12 +10255,22 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'administrSkill':
-            $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+           $user = $func['from']['id']; 
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9842,11 +10313,21 @@ if (isset($data['callback_query'])) {
 
         case 'designSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9898,11 +10379,21 @@ if (isset($data['callback_query'])) {
 
         case 'beautySkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -9957,11 +10448,21 @@ if (isset($data['callback_query'])) {
 
         case 'showbizSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10010,11 +10511,21 @@ if (isset($data['callback_query'])) {
 
         case 'logistikaSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10063,11 +10574,21 @@ if (isset($data['callback_query'])) {
 
         case 'marketingSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10116,11 +10637,21 @@ if (isset($data['callback_query'])) {
 
         case 'medicinaSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10190,11 +10721,21 @@ if (isset($data['callback_query'])) {
 
         case 'nedvizhimostSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10228,11 +10769,21 @@ if (isset($data['callback_query'])) {
 
         case 'naukaSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10281,11 +10832,21 @@ if (isset($data['callback_query'])) {
 
         case 'ohranaSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10343,11 +10904,21 @@ if (isset($data['callback_query'])) {
 
         case 'prodajiSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10393,11 +10964,21 @@ if (isset($data['callback_query'])) {
 
         case 'proizvodstvoSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10452,11 +11033,21 @@ if (isset($data['callback_query'])) {
 
         case 'torgovlyaSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10502,11 +11093,21 @@ if (isset($data['callback_query'])) {
 
         case 'sekretaringSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10558,11 +11159,21 @@ if (isset($data['callback_query'])) {
 
         case 'agrobiznesSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10620,11 +11231,21 @@ if (isset($data['callback_query'])) {
 
         case 'izdatelstvoSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10679,11 +11300,21 @@ if (isset($data['callback_query'])) {
 
         case 'strahovanieSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10711,11 +11342,21 @@ if (isset($data['callback_query'])) {
 
         case 'stroitelstvoSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10782,11 +11423,21 @@ if (isset($data['callback_query'])) {
 
         case 'obsluzhivanieSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10843,12 +11494,22 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'telecomunikaciiSkill':
-           $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $user = $func['from']['id']; 
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10894,11 +11555,21 @@ if (isset($data['callback_query'])) {
 
         case 'topmenSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10944,11 +11615,21 @@ if (isset($data['callback_query'])) {
 
         case 'avtobizSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11003,11 +11684,21 @@ if (isset($data['callback_query'])) {
 
         case 'hrSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11047,11 +11738,21 @@ if (isset($data['callback_query'])) {
 
         case 'bankSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11097,11 +11798,21 @@ if (isset($data['callback_query'])) {
 
         case 'yuristSkill':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11150,11 +11861,21 @@ if (isset($data['callback_query'])) {
 
         case 'ITSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11218,11 +11939,21 @@ if (isset($data['callback_query'])) {
 
         case 'administrSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11265,11 +11996,21 @@ if (isset($data['callback_query'])) {
 
         case 'designSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11321,11 +12062,21 @@ if (isset($data['callback_query'])) {
 
         case 'beautySkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11380,11 +12131,21 @@ if (isset($data['callback_query'])) {
 
         case 'showbizSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11433,11 +12194,21 @@ if (isset($data['callback_query'])) {
 
         case 'logistikaSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11486,11 +12257,21 @@ if (isset($data['callback_query'])) {
 
         case 'marketingSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11539,11 +12320,21 @@ if (isset($data['callback_query'])) {
 
         case 'medicinaSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11613,11 +12404,21 @@ if (isset($data['callback_query'])) {
 
         case 'nedvizhimostSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11651,11 +12452,21 @@ if (isset($data['callback_query'])) {
 
         case 'naukaSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11704,11 +12515,21 @@ if (isset($data['callback_query'])) {
 
         case 'ohranaSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11766,11 +12587,21 @@ if (isset($data['callback_query'])) {
 
         case 'prodajiSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11816,11 +12647,21 @@ if (isset($data['callback_query'])) {
 
         case 'proizvodstvoSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11875,11 +12716,21 @@ if (isset($data['callback_query'])) {
 
         case 'torgovlyaSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11925,11 +12776,21 @@ if (isset($data['callback_query'])) {
 
         case 'sekretaringSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -11981,11 +12842,21 @@ if (isset($data['callback_query'])) {
 
         case 'agrobiznesSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12043,11 +12914,21 @@ if (isset($data['callback_query'])) {
 
         case 'izdatelstvoSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12102,11 +12983,21 @@ if (isset($data['callback_query'])) {
 
         case 'strahovanieSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12134,11 +13025,21 @@ if (isset($data['callback_query'])) {
 
         case 'stroitelstvoSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12205,11 +13106,21 @@ if (isset($data['callback_query'])) {
 
         case 'obsluzhivanieSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12266,12 +13177,22 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'telecomunikaciiSkill ser1ch':
-           $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $user = $func['from']['id']; 
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12317,11 +13238,21 @@ if (isset($data['callback_query'])) {
 
         case 'topmenSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12367,11 +13298,21 @@ if (isset($data['callback_query'])) {
 
         case 'avtobizSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12426,11 +13367,21 @@ if (isset($data['callback_query'])) {
 
         case 'hrSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12470,11 +13421,21 @@ if (isset($data['callback_query'])) {
 
         case 'bankSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -12520,11 +13481,21 @@ if (isset($data['callback_query'])) {
 
         case 'yuristSkill ser1ch':
             $user = $func['from']['id']; 
-            $skillsCheck = mysqli_query ($con, "SELECT `userSkills` FROM `BOT` WHERE userID='".$user."' ");
-            $skills = mysqli_fetch_array($skillsCheck);
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Сейчас у вас указано:" . $skills['userSkills'] . "\n\nВыберите навык:",
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -19155,11 +20126,11 @@ if (isset($data['callback_query'])) {
 
         case 'myStats':
             $user = $func['from']['id']; 
-            $statCheck = mysqli_query ($con, "SELECT `userCoins`, `userReferals`, `regDate`, `userRank` FROM `BOT` WHERE userID='".$user."' ");
+            $statCheck = mysqli_query ($con, "SELECT `coins`, `referals`, `regDate`, `userRank` FROM `MainInfo` WHERE userID='".$user."' ");
             $stat = mysqli_fetch_array($statCheck);
             $method = 'editMessageText';
             $send_data = [
-                'text' => "📈 Моя статистика:\n\nМой ранг: ".$stat['userRank']."\nМои монеты: ".$stat['userCoins']."\nМои рефералы: ".$stat['userReferals']."\nДата регистрации: ".$stat['regDate'],
+                'text' => "📈 Моя статистика:\n\nМой ранг: ".$stat['userRank']."\nМои монеты: ".$stat['coins']."\nМои рефералы: ".$stat['referals']."\nДата регистрации: ".$stat['regDate'],
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
