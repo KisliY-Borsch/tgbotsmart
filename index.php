@@ -1,7 +1,7 @@
 <?php
 // Принимаем запрос
 $data = json_decode(file_get_contents('php://input'), TRUE);
-file_put_contents('file.txt', '$data: '.print_r($data, 1)."\n", FILE_APPEND);
+/*file_put_contents('file.txt', '$data: '.print_r($data, 1)."\n", FILE_APPEND);*/
 
 // Обрабатываем ручной ввод или нажатие на кнопку
 $func = $data['callback_query'] ? $data['callback_query'] : $data['message'];
@@ -2175,7 +2175,7 @@ if (isset($data['callback_query'])) {
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                    ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                 ],
                                 [
                                     ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2219,7 +2219,7 @@ if (isset($data['callback_query'])) {
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                        ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
                                         ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2243,7 +2243,7 @@ if (isset($data['callback_query'])) {
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                        ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
                                         ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2267,7 +2267,7 @@ if (isset($data['callback_query'])) {
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                        ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
                                         ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2307,7 +2307,7 @@ if (isset($data['callback_query'])) {
                                 'reply_markup'=>json_encode([
                                     'inline_keyboard'=>[
                                         [
-                                            ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                            ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                         ],
                                         [
                                             ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2333,7 +2333,7 @@ if (isset($data['callback_query'])) {
                                 'reply_markup'=>json_encode([
                                     'inline_keyboard'=>[
                                         [
-                                            ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                            ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                         ],
                                         [
                                             ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2370,7 +2370,7 @@ if (isset($data['callback_query'])) {
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
+                                    ['text' => '➕ Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                 ],
                                 [
                                     ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
@@ -2488,11 +2488,11 @@ if (isset($data['callback_query'])) {
 
             foreach ($prof as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1135")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value), 'callback_data' => trim($value)." 2333")));
                 }else{
                     if (!empty($value)) {
                         foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 2333")));
                         }
                     }
                 }
@@ -2512,6 +2512,252 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
             return;
         }
+    }
+    // Изменение скиллов
+    else if (strpos($data['callback_query']['data'], '3332') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем что человек хочет заменить
+        $word = preg_replace("/3332/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        // Достаем из базы все Интересы
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        if (trim($prof[0]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest1 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[1]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest2 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[2]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest3 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[3]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest4 = '' WHERE userID = ".$user." ");
+        }else if (trim($prof[4]) == $word) {
+            mysqli_query($con, "UPDATE `Interests` SET interest5 = '' WHERE userID = ".$user." ");
+        }else{
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
+            $arr = "";
+            foreach ($ar as $key => $value) {
+                if (trim($value) == $word) {
+                    $arr .= "";
+                }else{
+                    if ($arr == "") {
+                        $arr .= $value;
+                    }else{
+                        $arr .= ", " . trim($value);
+                    }
+                }
+            }
+            mysqli_query($con, "UPDATE `Interests` SET interest6 = '".$arr."' WHERE userID = ".$user." ");
+        }
+
+        // Отправляем пользователю сообщение с выбором нового интереса
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "🖊Замена интереса" . "\nВыбери категорию:" ,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                    ],
+                    [
+                        ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                    ],
+                    [
+                        ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в "Мои интересы"', 'callback_data' => 'myInterests'],
+                        ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+        return;
+    }
+    // Настройки интересов
+    else if (strpos($data['callback_query']['data'], '2333') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем из базы все Интересы
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        // Достаем что человек хочет удалить
+        $word = preg_replace("/2333/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "⚙️ Настройки ".$word,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '❌ Удалить '.$word, 'callback_data' => $word.' 1135']
+                    ],
+                    [
+                        ['text' => '🖊 Заменить '.$word, 'callback_data' => $word.' 3332']
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в "Мои навыки"', 'callback_data' => 'mySkills']  
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+        return;
+    }
+    // Настройки скиллов
+    else if (strpos($data['callback_query']['data'], '1333') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем из базы все скиллы
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        // Достаем что человек хочет удалить
+        $word = preg_replace("/1333/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "⚙️ Настройки ".$word,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '❌ Удалить '.$word, 'callback_data' => $word.' 1133']
+                    ],
+                    [
+                        ['text' => '🖊 Заменить '.$word, 'callback_data' => $word.' 3331']
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в "Мои навыки"', 'callback_data' => 'mySkills']  
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+        return;
+    }
+    // Изменение скиллов
+    else if (strpos($data['callback_query']['data'], '3331') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем что человек хочет заменить
+        $word = preg_replace("/3331/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        // Достаем из базы все скиллы
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        // Очищаем скилл из базы
+        if ($prof[0] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s1 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl1 = '' WHERE userID = ".$user." ");
+        }else if ($prof[1] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s2 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl2 = '' WHERE userID = ".$user." ");
+        }else if ($prof[2] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s3 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl3 = '' WHERE userID = ".$user." ");
+        }else if ($prof[3] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s4 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl4 = '' WHERE userID = ".$user." ");
+        }else if ($prof[4] == $word) {
+            mysqli_query($con, "UPDATE `Skills` SET s5 = '' WHERE userID = ".$user." ");
+            mysqli_query($con, "UPDATE `Skills` SET lvl5 = '' WHERE userID = ".$user." ");
+        }else{
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
+            $arr = "";
+            foreach ($ar as $key => $value) {
+                $prof = explode(")", $value);
+                if (trim($prof[1]) == trim($word)) {
+                    $arr .= "";
+                }else{
+                    if ($arr == "") {
+                        $arr .= $value;
+                    }else{
+                        $arr .= ", " . $value;
+                    }
+                }
+            }
+            mysqli_query($con, "UPDATE `Skills` SET s6 = '".$arr."' WHERE userID = ".$user." ");
+        }
+
+        // Отправляем пользователю сообщение с выбором нового скила
+        $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Выбери категорию:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill']
+                        ],
+                        [
+                            ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill']
+                        ],
+                        [
+                            ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill']
+                        ],
+                        [
+                            ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill']
+                        ],
+                        [
+                            ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill']
+                        ],
+                        [
+                            ['text' => 'Крюинг', 'callback_data' => 'crewingSkill']
+                        ],
+                        [
+                            ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill']
+                        ],
+                        [
+                            ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill']
+                        ],
+                        [
+                            ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill']
+                        ],
+                        /*[
+                            ['text' => '🆘 Я не нашел свой навык 🆘', 'callback_data' => 'imNotFindMySkill']
+                        ],*/
+                        [
+                            ['text' => '👈 Вернуться в "Мои навыки"', 'callback_data' => 'mySkills'],
+                            ['text' => '2 страница 👉', 'callback_data' => 'choiceSkills2']
+                        ]
+                    ]
+                ]
+            ];
+            $send_data['chat_id'] = $func['message']['chat']['id'];
+            $send_data['message_id'] = $func['message']['message_id'];
+            sendTelegram($method, $send_data);
+            return;
     }
     // Удаление скиллов
     else if (strpos($data['callback_query']['data'], '1133') !== false) {
@@ -2574,7 +2820,7 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Добавить навыки', 'callback_data' => 'choiceSkills']  
+                            ['text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills']  
                         ],
                         [
                             ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
@@ -2622,11 +2868,11 @@ if (isset($data['callback_query'])) {
 
             foreach ($prof as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value), 'callback_data' => trim($value)." 1333")));
                 }else{
                     if (!empty($value)) {
                         foreach ($profArrTo6 as $key => $value1) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 1333")));
                         }
                     }
                 }
@@ -2645,6 +2891,154 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
             return;
         }
+    }
+    // Настройки ценностей
+    else if (strpos($data['callback_query']['data'], '4333') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем из базы все ценности
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        // Достаем что человек хочет удалить
+        $word = preg_replace("/4333/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "⚙️ Настройки ".$word,
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => '❌ Удалить '.$word, 'callback_data' => $word.' 1134']
+                    ],
+                    [
+                        ['text' => '🖊 Заменить '.$word, 'callback_data' => $word.' 3334']
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в "Мои навыки"', 'callback_data' => 'mySkills']  
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+        return;
+    }
+    // Изменение ценностей
+    else if (strpos($data['callback_query']['data'], '3334') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем что человек хочет заменить
+        $word = preg_replace("/3334/i", "", $data['callback_query']['data']);
+        $word = trim($word);
+
+        // Достаем из базы все ценности
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+        $prof = mysqli_fetch_row($profCheck);
+
+        if ($prof[0] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n1 = '' WHERE userID = ".$user." ");
+        }else if ($prof[1] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n2 = '' WHERE userID = ".$user." ");
+        }else if ($prof[2] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n3 = '' WHERE userID = ".$user." ");
+        }else if ($prof[3] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n4 = '' WHERE userID = ".$user." ");
+        }else if ($prof[4] == $word) {
+            mysqli_query($con, "UPDATE `Needs` SET n5 = '' WHERE userID = ".$user." ");
+        }else{
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
+            $arr = "";
+            foreach ($ar as $key => $value) {
+                if (trim($value) == $word) {
+                    $arr .= "";
+                }else{
+                    if ($arr == "") {
+                        $arr .= $value;
+                    }else{
+                        $arr .= ", " . trim($value);
+                    }
+                }
+            }
+            mysqli_query($con, "UPDATE `Needs` SET n6 = '".$arr."' WHERE userID = ".$user." ");
+        }
+
+        // Отправляем пользователю сообщение с выбором новой ценности
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "_Выбери нужную ценность_",
+            "parse_mode" => "Markdown",
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [
+                        ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
+                    ],
+                    [
+                        ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
+                    ]
+                ]
+            ]
+        ];
+        $send_data['chat_id'] = $func['message']['chat']['id'];
+        $send_data['message_id'] = $func['message']['message_id'];
+        sendTelegram($method, $send_data);
+        return;
     }
     // Удаление ценностей
     else if (strpos($data['callback_query']['data'], '1134') !== false) {
@@ -2749,11 +3143,11 @@ if (isset($data['callback_query'])) {
 
             foreach ($prof as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1134")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value), 'callback_data' => trim($value)." 4333")));
                 }else{
                     if (!empty($value)) {
                         foreach ($needs6 as $key => $value1) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1134")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 4333")));
                         }
                     }
                 }
@@ -3476,52 +3870,7 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                        ],
-                        [
-                            ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                            ['text' => '➕ Добавить еще', 'callback_data' => 'pushNeeds']
                         ],
                         [
                             ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
@@ -3534,61 +3883,38 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);
             return;
         }else{
+                // Выводим ценности в правильном виде
+                $msgText2 = "";
+                foreach ($needs as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText2 .= trim($value) . "\n";
+                    }
+                }
             // Проверяем есть ли такая ценность уже у человека
             if ($needs[0] == $word or $needs[1] == $word or $needs[2] == $word or $needs[3] == $word or $needs[4] == $word or strpos($needs[5], $word) !== false) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "📝 *Мои ценности*\n\n*Упс! Такая ценность у вас уже есть*",
+                    'text' => "📝 *Мои ценности*\n\n*Упс! Такая ценность у вас уже есть*\nСейчас список ваших ценностей выглядит так: \n".$msgText2,
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                                ['text' => '➕ Добавить еще', 'callback_data' => 'pushNeeds']
                             ],
                             [
                                 ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
@@ -3666,52 +3992,7 @@ if (isset($data['callback_query'])) {
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
                                     [
-                                        ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                                    ],
-                                    [
-                                        ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                                        ['text' => '➕ Добавить еще', 'callback_data' => 'pushNeeds']
                                     ],
                                     [
                                         ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
@@ -3770,52 +4051,7 @@ if (isset($data['callback_query'])) {
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                                ['text' => '➕ Добавить еще', 'callback_data' => 'pushNeeds']
                             ],
                             [
                                 ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
@@ -7347,7 +7583,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);*/
 
-        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$data['callback_query']['message']."' WHERE userID = ".$user." ");
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$data['callback_query']['message']['message_id']."' WHERE userID = ".$user." ");
        
         $args1 = [
             'chat_id' => $user,
@@ -7378,7 +7614,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 'type' => 'photo',
                 'media' => 'attach://post_101.jpg'
                 ]),
-            'post_101.jpg' => new CURLFile("../tgbot/BotPics/post_101.jpg"),
+            'post_101.jpg' => new CURLFile("../tgBot/BotPic/post_101.jpg"),
             'reply_markup'=> json_encode([
                 'inline_keyboard'=>[
                     [
@@ -9856,15 +10092,47 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
         $word = $data['callback_query']['data'];
         $int = preg_replace("/int/i", "", $word);
 
+                $msgText3 = "";
+                // Выводим интересы в правильном виде
+                foreach ($ints as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $arr = explode("," , $value);
+                        foreach ($arr as $key => $value1) {
+                            $msgText3 .= trim($value1) . "\n";
+                        }
+                    }
+                }
+
         // Если такое хобби у человека уже есть
         if ($ints[0] == $int or $ints[1] == $int or $ints[2] == $int or $ints[3] == $int or $ints[4] == $int or strpos($ints[5], $int) !== false) {
             $method = 'editMessageText';
             $send_data = [
-                'text' => 'Упс! Кажется ' . trim($int) . " уже есть у вас в профиле",
+                'text' => 'Упс! Кажется ' . trim($int) . " уже есть у вас в профиле\nВаши интересы:\n".$msgText3."\n\n Вам нужно добавить 5 интересов\nВыберите категорию интереса",
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Выбрать другой интерес', 'callback_data' => 'pushInterests']
+                            ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                        ],
+                        [
+                            ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                        ],
+                        [
+                            ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                         ],
                         [
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -9884,11 +10152,17 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                    'text' => "Отлично! Вы добавили ".$int." в список своих интересов\nСейчас ваши интересы выглядят так:\n\u{0031}\u{FE0F}\u{20E3}".$int."\n\n Вам нужно добавить 5 интересов\nВыберите категорию интереса",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                            ],
+                            [
+                                ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                            ],
+                            [
+                                ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                             ],
                             [
                                 ['text' => '👈 Вернуться к "Мои интересы"', 'callback_data' => 'myInterests']
@@ -9910,13 +10184,47 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     // Пушим новый интерес в БД
                     $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest2 = '".$int."' WHERE userID = ".$user." ");
 
+                    $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+                    $ints = mysqli_fetch_row($intsCheck);
+                    $msgText3 = "";
+                    // Выводим интересы в правильном виде
+                    foreach ($ints as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $arr = explode("," , $value);
+                            foreach ($arr as $key => $value1) {
+                                $msgText3 .= trim($value1) . "\n";
+                            }
+                        }
+                    }
+
                     $method = 'editMessageText';
                     $send_data = [
-                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов\nСейчас ваши интересы выглядят так:\n".$msgText3."\n\n Вам нужно добавить 5 интересов\nВыберите категорию интереса",
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                    ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                                ],
+                                [
+                                    ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                                ],
+                                [
+                                    ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                                 ],
                                 [
                                     ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
@@ -9935,13 +10243,47 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     // Пушим новый интерес в БД
                     $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest3 = '".$int."' WHERE userID = ".$user." ");
 
+                    $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+                    $ints = mysqli_fetch_row($intsCheck);
+                    $msgText3 = "";
+                    // Выводим интересы в правильном виде
+                    foreach ($ints as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $arr = explode("," , $value);
+                            foreach ($arr as $key => $value1) {
+                                $msgText3 .= trim($value1) . "\n";
+                            }
+                        }
+                    }
+
                     $method = 'editMessageText';
                     $send_data = [
-                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов\nСейчас ваши интересы выглядят так:\n".$msgText3."\n\n Вам нужно добавить 5 интересов\nВыберите категорию интереса",
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                    ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                                ],
+                                [
+                                    ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                                ],
+                                [
+                                    ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                                 ],
                                 [
                                     ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
@@ -9959,13 +10301,48 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 }else if (empty($ints[3])) {
                     // Пушим новый интерес в БД
                     $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest4 = '".$int."' WHERE userID = ".$user." ");
+
+                    $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+                    $ints = mysqli_fetch_row($intsCheck);
+                    $msgText3 = "";
+                    // Выводим интересы в правильном виде
+                    foreach ($ints as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $arr = explode("," , $value);
+                            foreach ($arr as $key => $value1) {
+                                $msgText3 .= trim($value1) . "\n";
+                            }
+                        }
+                    }
+
                     $method = 'editMessageText';
                     $send_data = [
-                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов\nСейчас ваши интересы выглядят так:\n".$msgText3."\n\n Вам нужно добавить 5 интересов\nВыберите категорию интереса",
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                    ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                                ],
+                                [
+                                    ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                                ],
+                                [
+                                    ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                                 ],
                                 [
                                     ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
@@ -9983,6 +10360,34 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                 }else if (empty($ints[4])) {
                     // Пушим новый интерес в БД
                     $updateDB = mysqli_query ($con, "UPDATE `Interests` SET interest5 = '".$int."' WHERE userID = ".$user." ");
+                    $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+                    $ints = mysqli_fetch_row($intsCheck);
+                    $msgText3 = "";
+                    // Выводим интересы в правильном виде
+                    foreach ($ints as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $arr = explode("," , $value);
+                            foreach ($arr as $key => $value1) {
+                                $msgText3 .= trim($value1) . "\n";
+                            }
+                        }
+                    }
+
                     if ($rewards['InterestsReward'] == 0) {
                         // Пушим, что дали награду
                         mysqli_query ($con, "UPDATE `userRewards` SET InterestsReward = 1 WHERE userID = ".$user." ");
@@ -10004,13 +10409,19 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                         // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Отлично! Вы добавили_ *".$int."* _в список своих интересов\n\n_*Вы получили 100 монет за добавление 5 интересов*_. Узнать кол-во монет и как их получить, вы можете нажав на кнопку_ *'Монеты'* _в главном меню_",
+                            'caption' => "_Отлично! Вы добавили_ *".$int."* _в список своих интересов\n\n_*Вы получили 100 монет за добавление 5 интересов*_. Узнать кол-во монет и как их получить, вы можете нажав на кнопку_ *'Монеты'* _в главном меню_\nСейчас ваши интересы выглядят так:\n".$msgText3,
                             "parse_mode" => "Markdown",
                             'photo' => curl_file_create("../tgBot/BotPic/post_330.jpg"),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
                                     [
-                                        ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                        ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                                    ],
+                                    [
+                                        ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                                    ],
+                                    [
+                                        ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                                     ],
                                     [
                                         ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
@@ -10040,13 +10451,47 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                         // Пушим новый интерес в БД
                         mysqli_query ($con, "UPDATE `Interests` SET interest6 = '".$pints."' WHERE userID = ".$user." ");
                     }
+                    $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5`,`interest6` FROM `Interests` WHERE userID = ".$user." ");
+                    $ints = mysqli_fetch_row($intsCheck);
+                    $msgText3 = "";
+                    // Выводим интересы в правильном виде
+                    foreach ($ints as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $arr = explode("," , $value);
+                            foreach ($arr as $key => $value1) {
+                                $msgText3 .= trim($value1) . "\n";
+                            }
+                        }
+                    }
+
                     $method = 'editMessageText';
                     $send_data = [
-                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов\nСейчас ваши интересы выглядят так:\n".$msgText3,
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
-                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                    ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => 'Спорт']  
+                                ],
+                                [
+                                    ['text' => 'Развелчения 🔻', 'callback_data' => 'Развлечения']  
+                                ],
+                                [
+                                    ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                                 ],
                                 [
                                     ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
@@ -11908,11 +12353,11 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
 
             foreach ($needs as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value."1134")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.$value, 'callback_data' => $value." 4333")));
                 }else {
                     if(!empty($value)){
                         foreach($needsArrTo6 as $key => $value1){
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)."1134")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 4333")));
                         }
                     }
                 }
@@ -12247,11 +12692,11 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
 
             foreach ($interests as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1135")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value), 'callback_data' => trim($value)." 2333")));
                 }else {
                     if(!empty($value)){
                         foreach ($interestsArrTo6 as $key => $value1) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 2333")));
                         }
                     }
                 }
@@ -12270,7 +12715,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => 'Добавить интересы', 'callback_data' => 'pushInterests']  
+                                ['text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests']  
                             ],
                             [
                                 ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
@@ -13580,11 +14025,11 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
 
             foreach ($skills as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
+                    array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value), 'callback_data' => trim($value)." 1333")));
                 }else{
                     if (!empty($value)) {
                         foreach ($arrTo6 as $key => $value1) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
+                            array_push($btnsArray, array(array('text' => '⚙️ Настройки '.trim($value1), 'callback_data' => trim($value1)." 1333")));
                         }
                     }
                 }
@@ -13597,7 +14042,7 @@ else if (strpos($data['callback_query']['data'], 'tni') !== false) {
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => 'Добавить навыки', 'callback_data' => 'choiceSkills']  
+                                ['text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills']  
                             ],
                             [
                                 ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
