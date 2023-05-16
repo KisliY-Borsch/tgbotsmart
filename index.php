@@ -1,14 +1,15 @@
 <?php
 // Принимаем запрос
 $data = json_decode(file_get_contents('php://input'), TRUE);
-/*file_put_contents('file.txt', '$data: '.print_r($data, 1)."\n", FILE_APPEND);*/
+file_put_contents('file.txt', '$data: '.print_r($data, 1)."\n", FILE_APPEND);
 
 // Обрабатываем ручной ввод или нажатие на кнопку
 $func = $data['callback_query'] ? $data['callback_query'] : $data['message'];
 
 // Важные константы
 define('TOKEN', '6029265853:AAFd8vC7iBY2RpOcr9w_o89UsPswCH9GZfo');
-
+define('BOTID', '6029265853');
+$lastBotMessage = GetLastBotMessage($data);
 // Записываем сообщение пользователя
 $message = mb_strtolower(($func['text'] ? $func['text'] : $func['data']),'utf-8');
 
@@ -28,11 +29,13 @@ if (strpos($message, '/start') !== false) {
 
     // Если такого пользователя в БД нет, то запрашиваем номер телефона для регистрации
     if (empty($chatID)) {
-        $method = 'sendMessage';
-        $send_data = [
-            'text' => '👋 Приветствуем тебя в нашем SMART пространстве. Выбери кого ты ищешь:',
-            'reply_markup' => [
-                    'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "👋 *Приветствуем тебя в нашем SMART пространстве. Выбери кого ты ищешь:*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_334.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => '🔎🚲 С кем интересно провести время', 'callback_data' => '1chFirst']  
                     ],
@@ -49,8 +52,16 @@ if (strpos($message, '/start') !== false) {
                         ['text' => '🔎👥 Клиентов', 'callback_data' => '5chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
 
         # Пушим первую инфу пользователя в БД #
         // Создаем реферальную ссылку
@@ -144,11 +155,19 @@ if (strpos($message, '/start') !== false) {
 
 # Первые кнопки #
 if ($data['callback_query']['data'] == "FirsTmenu") {
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => '👋 Приветствуем тебя в нашем SMART пространстве. Выбери кого ты ищешь:',
-        'reply_markup' => [
-                'inline_keyboard' => [
+
+    $user = $func['from']['id'];
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+        'chat_id' => $user,
+        'caption' => "👋 *Приветствуем тебя в нашем SMART пространстве. Выбери кого ты ищешь:*",
+        "parse_mode" => "Markdown",
+        'photo' => curl_file_create("../tgBot/BotPic/post_334.jpg"),
+        'reply_markup'=>json_encode([
+            'inline_keyboard'=>[
                 [
                     ['text' => '🔎🚲 С кем интересно провести время', 'callback_data' => '1chFirst']  
                 ],
@@ -165,11 +184,16 @@ if ($data['callback_query']['data'] == "FirsTmenu") {
                     ['text' => '🔎👥 Клиентов', 'callback_data' => '5chFirst']
                 ]
             ]
-        ]
+        ])
     ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+                            
+    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+    curl_setopt($ch, CURLOPT_POST, 1);  
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_exec($ch);
+    curl_close($ch);
     return;
 }
 
@@ -188,12 +212,18 @@ if ($data['callback_query']['data'] == "1chFirst") {
     // Переменная для вывода в сообщение
     $msgArray = "";
 
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
     if (empty($ui['interest1'])) {
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nВыбери категорию:",
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Сейчас у тебя ничего не указано*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
                     ],
@@ -207,11 +237,17 @@ if ($data['callback_query']['data'] == "1chFirst") {
                         ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }else{
         // Выводим интересы в правильном виде
         if (!empty($ui['interest1'])) {
@@ -229,11 +265,13 @@ if ($data['callback_query']['data'] == "1chFirst") {
         if (!empty($ui['interest5'])) {
             $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nСейчас у вас указано:\n" . $msgArray . "\nВыбери категорию:" ,
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Сейчас у тебя указано:*\n" . $msgArray,
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
                     ],
@@ -247,13 +285,18 @@ if ($data['callback_query']['data'] == "1chFirst") {
                         ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }
-    return;
 }
 
 if ($data['callback_query']['data'] == "1 Развлечения") {
@@ -265,12 +308,18 @@ if ($data['callback_query']['data'] == "1 Развлечения") {
     // Переменная для вывода в сообщение
     $msgArray = "";
 
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
     if (empty($ui['interest1'])) {
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:",
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Пранки', 'callback_data' => 'Пранки tni']  
                     ],
@@ -305,11 +354,17 @@ if ($data['callback_query']['data'] == "1 Развлечения") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }else{
         // Выводим интересы в правильном виде
         if (!empty($ui['interest1'])) {
@@ -327,11 +382,13 @@ if ($data['callback_query']['data'] == "1 Развлечения") {
         if (!empty($ui['interest5'])) {
             $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:\n\nСейчас у тебя указано:* \n" . $msgArray,
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Пранки', 'callback_data' => 'Пранки tni']  
                     ],
@@ -366,13 +423,18 @@ if ($data['callback_query']['data'] == "1 Развлечения") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
-    }    
-    return;
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
 }
 if ($data['callback_query']['data'] == "2 Развлечения") {
     $user = $func['from']['id'];
@@ -383,12 +445,18 @@ if ($data['callback_query']['data'] == "2 Развлечения") {
     // Переменная для вывода в сообщение
     $msgArray = "";
 
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
     if (empty($ui['interest1'])) {
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:",
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Кафе', 'callback_data' => 'Кафе tni']  
                     ],
@@ -413,13 +481,18 @@ if ($data['callback_query']['data'] == "2 Развлечения") {
                     [
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
-
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }else{
         // Выводим интересы в правильном виде
         if (!empty($ui['interest1'])) {
@@ -437,11 +510,13 @@ if ($data['callback_query']['data'] == "2 Развлечения") {
         if (!empty($ui['interest5'])) {
             $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:\n\nСейчас у тебя указано:* \n" . $msgArray,
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Кафе', 'callback_data' => 'Кафе tni']  
                     ],
@@ -466,15 +541,19 @@ if ($data['callback_query']['data'] == "2 Развлечения") {
                     [
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
-
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }    
-    return;
 }
 if ($data['callback_query']['data'] == "1 Бизнес") {
     $user = $func['from']['id'];
@@ -485,12 +564,18 @@ if ($data['callback_query']['data'] == "1 Бизнес") {
     // Переменная для вывода в сообщение
     $msgArray = "";
 
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
     if (empty($ui['interest1'])) {
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:",
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Нетворкинг', 'callback_data' => 'Нетворкинг tni']  
                     ],
@@ -516,11 +601,17 @@ if ($data['callback_query']['data'] == "1 Бизнес") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }else{
         // Выводим интересы в правильном виде
         if (!empty($ui['interest1'])) {
@@ -538,11 +629,13 @@ if ($data['callback_query']['data'] == "1 Бизнес") {
         if (!empty($ui['interest5'])) {
             $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: \n" . $msgArray,
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:\n\nСейчас у тебя указано:* \n" . $msgArray,
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Нетворкинг', 'callback_data' => 'Нетворкинг tni']  
                     ],
@@ -568,13 +661,18 @@ if ($data['callback_query']['data'] == "1 Бизнес") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }    
-    return;
 }
 if ($data['callback_query']['data'] == "1 Спорт") {
     $user = $func['from']['id'];
@@ -585,12 +683,18 @@ if ($data['callback_query']['data'] == "1 Спорт") {
     // Переменная для вывода в сообщение
     $msgArray = "";
 
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
     if (empty($ui['interest1'])) {
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:",
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:*",
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Катание на роликах', 'callback_data' => 'Катание на роликах tni']  
                     ],
@@ -649,11 +753,17 @@ if ($data['callback_query']['data'] == "1 Спорт") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }else{
         // Выводим интересы в правильном виде
         if (!empty($ui['interest1'])) {
@@ -671,11 +781,13 @@ if ($data['callback_query']['data'] == "1 Спорт") {
         if (!empty($ui['interest5'])) {
             $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ui['interest5'] . "\n";
         }
-        $method = 'editMessageText';
-        $send_data = [
-            'text' => "Выберите интерес:\n\nСейчас у вас указано: " . $msgArray,
-            'reply_markup' => [
-                'inline_keyboard' => [
+        $response = [
+            'chat_id' => $user,
+            'caption' => "*Выбери свой интерес:\n\nСейчас у тебя указано:* " . $msgArray,
+            "parse_mode" => "Markdown",
+            'photo' => curl_file_create("../tgBot/BotPic/post_333.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Катание на роликах', 'callback_data' => 'Катание на роликах tni']  
                     ],
@@ -734,157 +846,215 @@ if ($data['callback_query']['data'] == "1 Спорт") {
                         ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '1chFirst']
                     ]
                 ]
-            ]
+            ])
         ];
-        $send_data['chat_id'] = $func['message']['chat']['id'];
-        $send_data['message_id'] = $func['message']['message_id'];
-        sendTelegram($method, $send_data);
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }    
-    return;
 }
 
-// 2 кнопка
-if ($data['callback_query']['data'] == "2.1chFirst") {
-    // Пушим id основного сообщения
-    $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
-    
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию, а в ней навык, которому хотите обучаться:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill first']
-                ],
-                [
-                    ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill first']
-                ],
-                [
-                    ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill first']
-                ],
-                [
-                    ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill first']
-                ],
-                [
-                    ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill first']
-                ],
-                [
-                    ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill first']
-                ],
-                [
-                    ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill first']
-                ],
-                [
-                    ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill first']
-                ],
-                [
-                    ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill first']
-                ],
-                [
-                    ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill first']
-                ],
-                [
-                    ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill first']
-                ],
-                [
-                    ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill first']
-                ],
-                [
-                    ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill first']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill first']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => '👈 Прошлая страница', 'callback_data' => '2chFirst']
-                ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
-}
 // 2 кнопка
 if ($data['callback_query']['data'] == "2chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
-    
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию, а в ней навык, которому хотите обучаться:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill first']
-                ],
-                [
-                    ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill first']
-                ],
-                [
-                    ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill first']
-                ],
-                [
-                    ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill first']
-                ],
-                [
-                    ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill first']
-                ],
-                [
-                    ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill first']
-                ],
-                [
-                    ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill first']
-                ],
-                [
-                    ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill first']
-                ],
-                [
-                    ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill first']
-                ],
-                [
-                    ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill first']
-                ],
-                [
-                    ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill first']
-                ],
-                [
-                    ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill first']
-                ],
-                [
-                    ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill first']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill first']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => 'Следующая страница 👉', 'callback_data' => '2.1chFirst']
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_335.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill first']
+                    ],
+                    [
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill first']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill first']
+                    ],
+                    [
+                        ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill first']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill first']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill first']
+                    ],
+                    [
+                        ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill first']
+                    ],
+                    [
+                        ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill first']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill first']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill first']
+                    ],*/
+                    [
+                        ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
+                        ['text' => '2 страница 👉', 'callback_data' => '2.1chFirst']
+                    ]
                 ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
+            ])
+        ];
+                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+}
+// 2 кнопка
+if ($data['callback_query']['data'] == "2.1chFirst") {
+    // Пушим id основного сообщения
+    $user = $func['from']['id'];
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_335.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill first']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill first']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill first']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill first']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill first']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill first']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill first']
+                    ],
+                    [
+                        ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill first']
+                    ],
+                    [
+                        ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill first']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill first']
+                    ],*/
+                    [
+                        ['text' => '👈 1 страница', 'callback_data' => '2chFirst'],
+                        ['text' => '3 страница 👉', 'callback_data' => '2.2chFirst']
+                    ]
+                ]
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+}
+// 2 кнопка
+if ($data['callback_query']['data'] == "2.2chFirst") {
+    // Пушим id основного сообщения
+    $user = $func['from']['id'];
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_335.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill first']
+                    ],
+                    [
+                        ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill first']
+                    ],
+                    [
+                        ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill first']
+                    ],
+                    [
+                        ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill first']
+                    ],
+                    [
+                        ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill first']
+                    ],
+                    [
+                        ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill first']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill first']
+                    ],
+                    [
+                        ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill first']
+                    ],
+                    [
+                        ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill first']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill first']
+                    ],*/
+                    [
+                        ['text' => '👈 2 страница', 'callback_data' => '2.1chFirst']
+                    ]
+                ]
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
 }
 
 // 3 кнопка
 if ($data['callback_query']['data'] == "3chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => "Укажите свой пол:",
-        'reply_markup' => [
-            'inline_keyboard' => [
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+        'chat_id' => $user,
+        'photo' => curl_file_create("../tgBot/BotPic/post_100.jpg"),
+        'reply_markup'=>json_encode([
+            'inline_keyboard'=>[
                 [
                     ['text' => 'Женский', 'callback_data' => 'Женский SexOnReg']
                 ],
@@ -895,77 +1065,15 @@ if ($data['callback_query']['data'] == "3chFirst") {
                     ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
                 ]
             ]
-        ]
+        ])
     ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
-}
-
-// 4 кнопка
-if ($data['callback_query']['data'] == "4.1chFirst") {
-    // Пушим id основного сообщения
-    $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
-
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill second']
-                ],
-                [
-                    ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill second']
-                ],
-                [
-                    ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill second']
-                ],
-                [
-                    ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill second']
-                ],
-                [
-                    ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill second']
-                ],
-                [
-                    ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill second']
-                ],
-                [
-                    ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill second']
-                ],
-                [
-                    ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill second']
-                ],
-                [
-                    ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill second']
-                ],
-                [
-                    ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill second']
-                ],
-                [
-                    ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill second']
-                ],
-                [
-                    ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill second']
-                ],
-                [
-                    ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill second']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill second']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => '👈 Прошлая страница', 'callback_data' => '4chFirst']
-                ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
+    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+    curl_setopt($ch, CURLOPT_POST, 1);  
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_exec($ch);
+    curl_close($ch);
     return;
 }
 
@@ -973,202 +1081,365 @@ if ($data['callback_query']['data'] == "4.1chFirst") {
 if ($data['callback_query']['data'] == "4chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill second']
-                ],
-                [
-                    ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill second']
-                ],
-                [
-                    ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill second']
-                ],
-                [
-                    ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill second']
-                ],
-                [
-                    ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill second']
-                ],
-                [
-                    ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill second']
-                ],
-                [
-                    ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill second']
-                ],
-                [
-                    ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill second']
-                ],
-                [
-                    ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill second']
-                ],
-                [
-                    ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill second']
-                ],
-                [
-                    ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill second']
-                ],
-                [
-                    ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill second']
-                ],
-                [
-                    ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill second']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill second']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => 'Следующая страница 👉', 'callback_data' => '4.1chFirst']
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_336.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill second']
+                    ],
+                    [
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill second']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill second']
+                    ],
+                    [
+                        ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill second']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill second']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill second']
+                    ],
+                    [
+                        ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill second']
+                    ],
+                    [
+                        ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill second']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill second']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill second']
+                    ],*/
+                    [
+                        ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
+                        ['text' => '2 страница 👉', 'callback_data' => '4.1chFirst']
+                    ]
                 ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
 }
-
-// 5 кнопка
-if ($data['callback_query']['data'] == "5.1chFirst") {
+// 4 кнопка
+if ($data['callback_query']['data'] == "4.1chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill third']
-                ],
-                [
-                    ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill third']
-                ],
-                [
-                    ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill third']
-                ],
-                [
-                    ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill third']
-                ],
-                [
-                    ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill third']
-                ],
-                [
-                    ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill third']
-                ],
-                [
-                    ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill third']
-                ],
-                [
-                    ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill third']
-                ],
-                [
-                    ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill third']
-                ],
-                [
-                    ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill third']
-                ],
-                [
-                    ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill third']
-                ],
-                [
-                    ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill third']
-                ],
-                [
-                    ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill third']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill third']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => '👈 Прошлая страница', 'callback_data' => '5chFirst']
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_336.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill second']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill second']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill second']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill second']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill second']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill second']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill second']
+                    ],
+                    [
+                        ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill second']
+                    ],
+                    [
+                        ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill second']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill second']
+                    ],*/
+                    [
+                        ['text' => '👈 1 страница', 'callback_data' => '4chFirst'],
+                        ['text' => '3 страница 👉', 'callback_data' => '4.2chFirst']
+                    ]
                 ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+}
+// 4 кнопка
+if ($data['callback_query']['data'] == "4.2chFirst") {
+    // Пушим id основного сообщения
+    $user = $func['from']['id'];
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_336.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill second']
+                    ],
+                    [
+                        ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill second']
+                    ],
+                    [
+                        ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill second']
+                    ],
+                    [
+                        ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill second']
+                    ],
+                    [
+                        ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill second']
+                    ],
+                    [
+                        ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill second']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill second']
+                    ],
+                    [
+                        ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill second']
+                    ],
+                    [
+                        ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill second']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill second']
+                    ],*/
+                    [
+                        ['text' => '👈 2 страница', 'callback_data' => '4.1chFirst']
+                    ]
+                ]
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
 }
 
 // 5 кнопка
 if ($data['callback_query']['data'] == "5chFirst") {
     // Пушим id основного сообщения
     $user = $func['from']['id'];
-    $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = ".$func['message']['message_id']." WHERE userID=".$user." ");
 
-    $method = 'editMessageText';
-    $send_data = [
-        'text' => 'Выберите категорию:',
-        'reply_markup' => [
-            'inline_keyboard' => [
-                [
-                    ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill third']
-                ],
-                [
-                    ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill third']
-                ],
-                [
-                    ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill third']
-                ],
-                [
-                    ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill third']
-                ],
-                [
-                    ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill third']
-                ],
-                [
-                    ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill third']
-                ],
-                [
-                    ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill third']
-                ],
-                [
-                    ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill third']
-                ],
-                [
-                    ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill third']
-                ],
-                [
-                    ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill third']
-                ],
-                [
-                    ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill third']
-                ],
-                [
-                    ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill third']
-                ],
-                [
-                    ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill third']
-                ],
-                /*[
-                    ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill third']
-                ],*/
-                [
-                    ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
-                    ['text' => 'Следующая страница 👉', 'callback_data' => '5.1chFirst']
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_337.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill third']
+                    ],
+                    [
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill third']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill third']
+                    ],
+                    [
+                        ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill third']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill third']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill third']
+                    ],
+                    [
+                        ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill third']
+                    ],
+                    [
+                        ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill third']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill third']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill third']
+                    ],*/
+                    [
+                        ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu'],
+                        ['text' => '2 страница 👉', 'callback_data' => '5.1chFirst']
+                    ]
                 ]
-            ]
-        ]
-    ];
-    $send_data['chat_id'] = $func['message']['chat']['id'];
-    $send_data['message_id'] = $func['message']['message_id'];
-    sendTelegram($method, $send_data);
-    return;
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+}
+// 5 кнопка
+if ($data['callback_query']['data'] == "5.1chFirst") {
+    // Пушим id основного сообщения
+    $user = $func['from']['id'];
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_337.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill third']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill third']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill third']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill third']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill third']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill third']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill third']
+                    ],
+                    [
+                        ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill third']
+                    ],
+                    [
+                        ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill third']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill third']
+                    ],*/
+                    [
+                        ['text' => '👈 1 страница', 'callback_data' => '5chFirst'],
+                        ['text' => '3 страница 👉', 'callback_data' => '5.2chFirst']
+                    ]
+                ]
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+}
+// 5 кнопка
+if ($data['callback_query']['data'] == "5.2chFirst") {
+    // Пушим id основного сообщения
+    $user = $func['from']['id'];
+
+    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+    $send_data['chat_id'] = $user;
+    sendTelegram('deleteMessage', $send_data);
+
+    $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_337.jpg"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill third']
+                    ],
+                    [
+                        ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill third']
+                    ],
+                    [
+                        ['text' => 'Строительство, архитектура', 'callback_data' => 'stroitelstvoSkill third']
+                    ],
+                    [
+                        ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill third']
+                    ],
+                    [
+                        ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill third']
+                    ],
+                    [
+                        ['text' => 'Транспорт, автобизнес', 'callback_data' => 'avtobizSkill third']
+                    ],
+                    [
+                        ['text' => 'Управление персоналом, HR', 'callback_data' => 'hrSkill third']
+                    ],
+                    [
+                        ['text' => 'Финансы, банк', 'callback_data' => 'bankSkill third']
+                    ],
+                    [
+                        ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill third']
+                    ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill third']
+                    ],*/
+                    [
+                        ['text' => '👈 2 страница', 'callback_data' => '5.1chFirst']
+                    ]
+                ]
+            ])
+        ];
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
 }
 
 // Если мы получили локацию
 if($func['location'] != ""){
+    $user = $func['from']['id'];
 
     // Удаление локации
     $send_data['message_id'] = $func['message_id'];
@@ -1179,35 +1450,30 @@ if($func['location'] != ""){
     $send_data['message_id'] = $func['reply_to_message']['message_id'];
     sendTelegram('deleteMessage', $send_data);
 
-    /*// Проверяем в какой ветке дать пользователю возможность писать
-    if (strpos($func['reply_to_message']['text'], "общения") {
-        
-    }else if (strpos($func['reply_to_message']['text'], "обучения"){
-        
-    }else if (strpos($func['reply_to_message']['text'], "знакомств"){
-        
-    }else if (strpos($func['reply_to_message']['text'], "специалиста"){
-        
-    }else{
-
-    }*/
-
-    $method = 'sendMessage';
-    $send_data = [
-        'text' => "👌 Отлично, чат в твоем городе я уже нашел, но для полной регистрации мне нужно знать твой номер. \nНажми на кнопку ниже 👇",
-        'reply_markup' => [
+    $response = [
+        'chat_id' => $user,
+        'caption' => "👌 _Отлично, чат в твоем городе я уже нашел, но для полной регистрации_ *мне нужно знать твой номер. \nНажми на кнопку ниже* 👇",
+        'parse_mode' => "Markdown",
+        'protect_content' => true,
+        'photo' => curl_file_create("../tgBot/BotPic/post_192.png"),
+        'reply_markup'=>json_encode([
             resize_keyboard =>true,
             one_time_keyboard => true,
             'keyboard' => [
                 [
-                    ['text' => '📱 Поделиться номером', request_contact => true]
+                    ['text' => 'Поделиться номером', request_contact => true]
                 ]
             ]
-        ]
-    ];
-
-    $send_data['chat_id'] = $func['chat']['id'];
-    sendTelegram($method, $send_data);
+        ])
+    ];                 
+    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+    curl_setopt($ch, CURLOPT_POST, 1);  
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_exec($ch);
+    curl_close($ch);
+    return;
 }
 
 // Если мы получили номер телефона
@@ -1240,15 +1506,22 @@ if($func['contact']['phone_number'] != ""){
     }else{
 
     }*/
-        // Отправляем ссылку на чат
-    $method = 'sendMessage';
-    $send_data = [
-        'text' => 'Вступи в чат [Деловая Одесса](https://t.me/+8mMjL5dm2c0zYTVi) и в ветке "Встречи по интересам" напиши приветственное сообщение и тебе откроются дополнительные функции!',
-        'parse_mode' => 'markdown',
-        'disable_web_page_preview' => true
-    ];
-    $send_data['chat_id'] = $func['chat']['id'];
-    sendTelegram($method, $send_data);
+    $response = [
+        'chat_id' => $user,
+        'caption' => '[Деловая Одесса](https://t.me/+8mMjL5dm2c0zYTVi)',
+        'parse_mode' => "Markdown",
+        'disable_web_page_preview' => true,
+        'protect_content' => true,
+        'photo' => curl_file_create("../tgBot/BotPic/post_237.png")
+    ];                 
+    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+    curl_setopt($ch, CURLOPT_POST, 1);  
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_exec($ch);
+    curl_close($ch);
+
         // Выводим человека из всех меню
     $user = $func['from']['id'];
     mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = '".$user."' ");
@@ -1317,14 +1590,14 @@ if ($data['message']['text']) {
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
             // Выводим благодарность
-        $method = 'editMessageText';
+        $method = 'sendMessage';
         $send_data = [
             'text' => '*Спасибо большое! Благодаря тебе, я становлюсь лучше с каждым днем!*',
             'parse_mode' => 'markdown',
             'reply_markup' => [
                 'inline_keyboard' => [
                     [
-                        ['text' => '👈 Вернуться к главное меню', 'callback_data' => 'mainMenu']  
+                        ['text' => '👈 Вернуться в главное меню', 'callback_data' => 'mainMenu']  
                     ]
                 ]
             ]
@@ -1334,7 +1607,13 @@ if ($data['message']['text']) {
         sendTelegram($method, $send_data);
     }
 
-    elseif ($track['whichMenu'] == "ИмяФамилия") {
+    else if ($track['whichMenu'] == "ДобавлениеФото" && $data['callback_query']['message']['from']['is_bot'] == 1){
+        $user = $data['callback_query']['from']['id'];
+        $mesID = $data['callback_query']['message']['message_id'];
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToChange = '".$mesID."' WHERE userID = ".$user." ");
+    }
+
+    else if ($track['whichMenu'] == "ИмяФамилия") {
         // Проверяем первое ли это сообщение в БД
         if (empty($track['rowsToDel'])) {
             // Если да, тогда сразу пушим этот id и содержание сообщения в БД
@@ -1480,6 +1759,65 @@ if ($data['message']['text']) {
         }
     }
 
+    else if ($track['whichMenu'] == "send3Geo4From5List"){
+        // Удаляем сообщение, которое прислал пользователь
+        $send_data['message_id'] = $mesID;
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем id сообщения, для изменения
+        $idCheck = mysqli_query ($con, "SELECT `mesToChange` FROM `TrackingMenu` WHERE userID = ".$user." ");
+        $ids = mysqli_fetch_row($idCheck);
+
+        // Лезем в базу, чтоб найти нужный город или страну
+        $cityCheck = mysqli_query ($con, "SELECT `City`, `Country` FROM `CitiesAndCountries` WHERE (City LIKE '%".$data['message']['text']."%') OR (Country LIKE '%".$data['message']['text']."%')" );
+        $city = mysqli_fetch_row($cityCheck);
+
+        $cities = "";
+        $counter = 0;
+        $buttons = array();
+        $co = "";
+
+        foreach ($cityCheck as $key => $value) {
+            mysqli_fetch_array($value);
+            foreach ($value as $key => $value) {
+                $counter += 1;
+               if ($cities == "") {
+                   $cities = $value;
+               }else{
+                    $cities .= ", ".$value;
+                    $co = explode(", ", $cities);
+                    array_push($buttons, array(array('text' => $cities, 'callback_data' => $cities."1122")));
+                    /*file_put_contents('cities.txt', print_r($cities, 1)."\n", FILE_APPEND);*/
+                    $cities = "";
+               }
+            }
+        }
+
+        if ($counter == 0) {
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "Упс. Я ничего не нашел. Попробуй написать иначе, возможно ты ошибся",
+            ];
+            $send_data['chat_id'] = $user;
+            $send_data['message_id'] = $ids[0];
+            sendTelegram($method, $send_data);
+            return;
+        }else{
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "Я нашел: ",
+                'reply_markup' => [
+                    'inline_keyboard' => $buttons
+                ]
+            ];
+            $send_data['chat_id'] = $user;
+            $send_data['message_id'] = $ids[0];
+            sendTelegram($method, $send_data);
+            return;
+        }
+    }
+
     else{
         // Удаляем любое другое сообщение
         $send_data['message_id'] = $mesID;
@@ -1525,123 +1863,204 @@ if (isset($data['message']['photo'])) {
             $send_data['chat_id'] = $user;
             sendTelegram('deleteMessage', $send_data);
 
-            // Получаем из БД все о пользователе
-            $user = $func['from']['id'];
-            $mainCheck = mysqli_query ($con, "SELECT * FROM `MainInfo` WHERE userID='".$user."' ");
-            $needCheck = mysqli_query ($con, "SELECT * FROM `Needs` WHERE userID='".$user."' ");
-            $skillCheck = mysqli_query ($con, "SELECT * FROM `Skills` WHERE userID='".$user."' ");
-            $intCheck = mysqli_query ($con, "SELECT * FROM `Interests` WHERE userID='".$user."' ");
-
-            // Обрабатываем запросы в БД
-            $main = mysqli_fetch_array($mainCheck);
-            $need = mysqli_fetch_array($needCheck);
-            $skill = mysqli_fetch_array($skillCheck);
-            $int = mysqli_fetch_array($intCheck);
-
             mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = ".$user." ");
 
-            // Создаем переменную в которую будем заливать то что у человека уже введено
-            $msgArray = "";
+            // Получаем из БД все о пользователе
+        $user = $func['from']['id'];
+        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto` FROM `MainInfo` WHERE userID='".$user."' ");
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$user."' ");
+        $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
+            
+        $prof = mysqli_fetch_array($profCheck);
+        $skill = mysqli_fetch_row($skillsCheck);
+        $need = mysqli_fetch_row($needsCheck);
+        $int = mysqli_fetch_row($intsCheck);
+        $socials = mysqli_fetch_array($socialCheck);
 
-            if (!empty($main['name']) or !empty($main['surname'])) {
-                $msgArray .= "_Имя и Фамилия:_ " . $main['name'] . " " . $main['surname'] . "\n\n";
-            }
+        $msgText1 = "";
+        $msgText2 = "";
+        $msgText3 = "";
 
-            if (!empty($main['userAge'])) {
-                $msgArray .= "_Возраст:_ " . $main['userAge'] . "\n\n";
-            }
-
-            if (!empty($int['interest1'])) {
-                $msgArray .= "_Мои интересы:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $int['interest1'] . "\n";
-
-                if (!empty($int['interest2'])) {
-                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $int['interest2'] . "\n";
-                }    
-                if (!empty($int['interest3'])) {
-                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $int['interest3'] . "\n";
+        if (!empty($skill)) {
+            $msgText1 = "\n🧑‍💻 <i>Мои навыки:</i> \n";
+                // Выводим скиллы в правильном виде
+            foreach ($skill as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($int['interest4'])) {
-                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $int['interest4'] . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($int['interest5'])) {
-                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $int['interest5'] . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($int['interest6'])) {
-                    $msgArray .= $int['interest6'] . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-            }
-
-            if (!empty($skill['s1'])) {
-                $msgArray .= "_Мои навыки:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $skill['s1'] . "\n";
-                
-                if (!empty($skill['s2'])) {
-                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $skill['s2'] . "\n";
-                }    
-                if (!empty($skill['s3'])) {
-                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $skill['s3'] . "\n";
+                if ($key == 4 and !empty($value)) {
+                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($skill['s4'])) {
-                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $skill['s4'] . "\n";
-                }
-                if (!empty($skill['s5'])) {
-                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $skill['s5'] . "\n";
-                }
-                if (!empty($skill['s6'])) {
-                    $msgArray .= $skill['s6'] . "\n";
+                if ($key == 5 and !empty($value)) {
+                    $msgText1 .= "<b>" . trim($value) . "</b>\n";
                 }
             }
+        }
 
-            if (!empty($need['n1'])) {
-                $msgArray .= "_Мои ценности:_ \n\u{0031}\u{FE0F}\u{20E3}" . " - " . $need['n1'] . "\n";
-                
-                if (!empty($need['n2'])) {
-                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $need['n2'] . "\n";
-                }    
-                if (!empty($need['n3'])) {
-                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $need['n3'] . "\n";
+        if (!empty($need)) {
+            $msgText2 = "\n📝 <i>Мои ценности:</i> \n";
+                // Выводим ценности в правильном виде
+            foreach ($need as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($need['n4'])) {
-                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $need['n4'] . "\n";
+                if ($key == 1 and !empty($value)) {
+                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($need['n5'])) {
-                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $need['n5'] . "\n";
+                if ($key == 2 and !empty($value)) {
+                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
-                if (!empty($need['n6'])) {
-                    $msgArray .= $need['n6'] . "\n";
+                if ($key == 3 and !empty($value)) {
+                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 4 and !empty($value)) {
+                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText2 .= "<b>" . trim($value) . "</b>\n";
                 }
             }
+        }    
+        
+        if (!empty($int)) {
+            $msgText3 = "\n🚲 <i>Мои интересы:</i> \n";
+                // Выводим ценности в правильном виде
+            foreach ($int as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 1 and !empty($value)) {
+                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 2 and !empty($value)) {
+                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 3 and !empty($value)) {
+                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 4 and !empty($value)) {
+                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                }
+            }
+        }
+
+        $soc = "";
+
+        if (!empty($prof['userAge'])) {
+            $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+        }
+
+        if (!empty($socials['inst'])) {
+            $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+            if ($soc == "") {
+                $soc = $inst;
+            }else{
+                $soc .= ", ".$inst;
+            }
+        }else{
+            $inst = "";
+        }
+
+        if (!empty($socials['tiktok'])) {
+            $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+            if ($soc == "") {
+                $soc = $tiktok;
+            }else{
+                $soc .= ", ".$tiktok;
+            }
+        }else{
+            $tiktok = "";
+        }
+
+        if (!empty($socials['facebook'])) {
+            $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+            if ($soc == "") {
+                $soc = $facebook;
+            }else{
+                $soc .= ", ".$facebook;
+            }
+        }else{
+            $facebook = "";
+        }
+
+        if (!empty($socials['viber'])) {
+            $viber = "<b>Viber - ".$socials['viber']."</b>";
+            if ($soc == "") {
+                $soc = $viber;
+            }else{
+                $soc .= ", ".$viber;
+            }
+        }else{
+            $viber = "";
+        }
+
+        if (!empty($socials['whatsapp'])) {
+            $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+            if ($soc == "") {
+                $soc = $whatsapp;
+            }else{
+                $soc .= ", ".$whatsapp;
+            }
+        }else{
+            $whatsapp = "";
+        }
+
+        if (!empty($socials['anotherSocials'])) {
+            $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+            if ($soc == "") {
+                $soc = $anotherSocials;
+            }else{
+                $soc .= ", ".$anotherSocials;
+            }
+        }else{
+            $anotherSocials = "";
+        }
 
             $response = [
-                'chat_id' => $user,
-                'caption' => "😁 *Мой профиль*\n" . $msgArray,
-                "parse_mode" => "Markdown",
-                'photo' => curl_file_create("../tgBot/userPhotos/".$main['userPhoto']),
-                'reply_markup'=>json_encode([
-                    'inline_keyboard'=>[
-                        [
-                            ['text' => '🤴 Личные данные', 'callback_data' => 'myNameAge']  
-                        ],
-                        [
-                            ['text' => '🧑‍💻 Мои навыки', 'callback_data' => 'mySkills']
-                        ],
-                        [
-                            ['text' => '🚲 Мои интересы', 'callback_data' => 'myInterests']
-                        ],
-                        [
-                            ['text' => '📝 Мои ценности', 'callback_data' => 'myNeeds']
-                        ],
-                        [
-                            ['text' => 'Мои соцсети', 'callback_data' => 'mySocial']
-                        ],
-                        [
-                            ['text' => '🗣 Реферальная ссылка', 'callback_data' => 'myAffiliate']
-                        ],
-                        [
-                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                    'chat_id' => $user,
+                    'caption' => "😁 <b>Мой профиль\n\n".$prof['name']." ".$prof['surname']."</b>".$age.$msgText1.$msgText2.$msgText3."\n".$soc,
+                    "parse_mode" => "html",
+                    'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
+                    'reply_markup'=>json_encode([
+                        'inline_keyboard'=>[
+                            [
+                                ['text' => '🤴 Личные данные', 'callback_data' => 'myNameAge']  
+                            ],
+                            [
+                                ['text' => '🧑‍💻 Мои навыки', 'callback_data' => 'mySkills']
+                            ],
+                            [
+                                ['text' => '🚲 Мои интересы', 'callback_data' => 'myInterests']
+                            ],
+                            [
+                                ['text' => '📝 Мои ценности', 'callback_data' => 'myNeeds']
+                            ],
+                            [
+                                ['text' => 'Мои соцсети', 'callback_data' => 'mySocial']
+                            ],
+                            [
+                                ['text' => '🗣 Реферальная ссылка', 'callback_data' => 'myAffiliate']
+                            ],
+                            [
+                                ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                            ]
                         ]
-                    ]
-                ])
-            ];
+                    ])
+                ];
                     
             $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
             curl_setopt($ch, CURLOPT_POST, 1);  
@@ -1726,14 +2145,15 @@ if (isset($data['callback_query'])) {
 
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "Упс. У вас в профиле уже есть навык " . $newSkill . "\n\nСейчас список ваших навыков выглядит так: \n" . $msgArray,
+                    'text' => "_Упс. У вас в профиле уже есть навык_ *" . $newSkill . "*\n\n_Сейчас список ваших навыков выглядит так:_ *\n" . $msgArray."*",
+                    'parse_mode' => 'markdown',
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
                                 ['text' => 'Выбрать другой навык', 'callback_data' => 'choiceSkills']
                             ],
                             [
-                                ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                             ]
                         ]
                     ]
@@ -1741,7 +2161,7 @@ if (isset($data['callback_query'])) {
                 $send_data['chat_id'] = $func['message']['chat']['id'];
                 $send_data['message_id'] = $func['message']['message_id'];
                 sendTelegram($method, $send_data);
-
+                return;
             }else{
                 // Если это первый навык
                 if (empty($skill['s1'])) {
@@ -1750,14 +2170,15 @@ if (isset($data['callback_query'])) {
 
                     $method = 'sendMessage';
                     $send_data = [
-                        'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                        'text' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level ."*",
+                        'parse_mode' => 'markdown',
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
                                     ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                 ],
                                 [
-                                    ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                    ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                 ]
                             ]
                         ]
@@ -1765,6 +2186,7 @@ if (isset($data['callback_query'])) {
                     $send_data['chat_id'] = $func['message']['chat']['id'];
                     $send_data['message_id'] = $func['message']['message_id'];
                     sendTelegram($method, $send_data);
+                    return;
                 }else{
                         // Выводим интересы в правильном виде
                     if (!empty($skill['s1'])) {
@@ -1792,14 +2214,15 @@ if (isset($data['callback_query'])) {
 
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                            'text' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level ."*",
+                            'parse_mode' => 'markdown',
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
                                         ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
-                                        ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                     ]
                                 ]
                             ]
@@ -1815,14 +2238,15 @@ if (isset($data['callback_query'])) {
 
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                            'text' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level ."*",
+                            'parse_mode' => 'markdown',
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
                                         ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
-                                        ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                     ]
                                 ]
                             ]
@@ -1838,14 +2262,15 @@ if (isset($data['callback_query'])) {
 
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                            'text' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level ."*",
+                            'parse_mode' => 'markdown',
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
                                         ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                     ],
                                     [
-                                        ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                     ]
                                 ]
                             ]
@@ -1875,17 +2300,17 @@ if (isset($data['callback_query'])) {
 
                             $response = [
                                 'chat_id' => $user,
-                                'caption' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level . "\n\nСейчас список ваших навыков выглядит так: " . $msgArray . "\nВы получили 100 монет за добавление 5 навыков. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
+                                'caption' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level . "*\n\n_Сейчас список ваших навыков выглядит так:_ \n*" . $msgArray."\u{0035}\u{FE0F}\u{20E3}" . " - " . $newSkill . "\n*" . "\n_Вы получили_ *100 монет за добавление 5 навыков*_. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню_",
                                 "parse_mode" => "Markdown",
                                 'protect_content' => true,
-                                'photo' => curl_file_create("../tgBot/BotPic/post_199.png"),
+                                'photo' => curl_file_create("../tgBot/BotPic/post_199.jpg"),
                                 'reply_markup'=>json_encode([
                                     'inline_keyboard'=>[
                                         [
                                             ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                         ],
                                         [
-                                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                         ]
                                     ]
                                 ])
@@ -1901,7 +2326,7 @@ if (isset($data['callback_query'])) {
                         }else{
                             $response = [
                                 'chat_id' => $user,
-                                'caption' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level . "\n\nСейчас список ваших навыков выглядит так: " . $msgArray,
+                                'caption' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level . "*\n\n_Сейчас список ваших навыков выглядит так:_ *" . $msgArray."*",
                                 "parse_mode" => "Markdown",
                                 'protect_content' => true,
                                 'photo' => curl_file_create("../tgBot/BotPic/post_199.png"),
@@ -1911,7 +2336,7 @@ if (isset($data['callback_query'])) {
                                             ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                         ],
                                         [
-                                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                         ]
                                     ]
                                 ])
@@ -1940,14 +2365,15 @@ if (isset($data['callback_query'])) {
 
                     $method = 'sendMessage';
                     $send_data = [
-                        'text' => "Вы добавили профессию: " . $newSkill . "\nС уровнем владения: " . $level,
+                        'text' => "_Вы добавили профессию:_ *" . $newSkill . "*\n_С уровнем владения:_ *" . $level ."*",
+                        'parse_mode' => 'markdown',
                         'reply_markup' => [
                             'inline_keyboard' => [
                                 [
                                     ['text' => 'Добавить еще навыки', 'callback_data' => 'choiceSkills']
                                 ],
                                 [
-                                    ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']
+                                    ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                                 ]
                             ]
                         ]
@@ -1955,6 +2381,7 @@ if (isset($data['callback_query'])) {
                     $send_data['chat_id'] = $func['message']['chat']['id'];
                     $send_data['message_id'] = $func['message']['message_id'];
                     sendTelegram($method, $send_data);
+                    return;
                 }
             }    
     }
@@ -1980,16 +2407,17 @@ if (isset($data['callback_query'])) {
         }else if (trim($prof[4]) == $word) {
             mysqli_query($con, "UPDATE `Interests` SET interest5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
-            foreach ($ar as $key => $value1) {
-                if (trim($value1) == $word) {
+            foreach ($ar as $key => $value) {
+                if (trim($value) == $word) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
-                        $arr .= trim($value1);
+                        $arr .= $value;
                     }else{
-                        $arr .= ", " . trim($value1);
+                        $arr .= ", " . trim($value);
                     }
                 }
             }
@@ -2016,7 +2444,7 @@ if (isset($data['callback_query'])) {
                             ['text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
@@ -2051,9 +2479,9 @@ if (isset($data['callback_query'])) {
                 }
                 if ($key == 5 and !empty($value)) {
                     $skills6 = explode("," , $value);
-                    foreach ($skills6 as $key => $value) {
-                        $msgText3 .= trim($value) . "\n";
-                        array_push($arrTo6, $value);
+                    foreach ($skills6 as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($arrTo6, trim($value1));
                     }
                 }
             }
@@ -2064,13 +2492,13 @@ if (isset($data['callback_query'])) {
                 }else{
                     if (!empty($value)) {
                         foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1135")));
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
                         }
                     }
                 }
             }
 
-            array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
+            array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
             $method = 'sendMessage';
             $send_data = [
                 'text' => "🚲 *Мои интересы:*\n\n" . $msgText3,
@@ -2112,10 +2540,12 @@ if (isset($data['callback_query'])) {
             mysqli_query($con, "UPDATE `Skills` SET s5 = '' WHERE userID = ".$user." ");
             mysqli_query($con, "UPDATE `Skills` SET lvl5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
             foreach ($ar as $key => $value) {
-                if ($value == $word) {
+                $prof = explode(")", $value);
+                if (trim($prof[1]) == trim($word)) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
@@ -2147,7 +2577,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Добавить навыки', 'callback_data' => 'choiceSkills']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
@@ -2159,7 +2589,7 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие скилы
         else{
-            $arrTo6 = array();
+            $profArrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить навыки', 'callback_data' => 'choiceSkills')));
@@ -2185,7 +2615,7 @@ if (isset($data['callback_query'])) {
                     foreach ($skills6 as $key => $value) {
                         $skill6 = explode(")", $value);
                         $msgText3 .= trim($skill6[1]) . "\n";
-                        array_push($arrTo6, $skill6[1]);
+                        array_push($profArrTo6, $skill6[1]);
                     }
                 }
             }
@@ -2195,14 +2625,14 @@ if (isset($data['callback_query'])) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        foreach ($profArrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
                         }
                     }
                 }
             }
 
-            array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
+            array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
             $method = 'sendMessage';
             $send_data = [
                 'text' => "🧑‍💻 Мои навыки\n\n" . $msgText3,
@@ -2238,16 +2668,17 @@ if (isset($data['callback_query'])) {
         }else if ($prof[4] == $word) {
             mysqli_query($con, "UPDATE `Needs` SET n5 = '' WHERE userID = ".$user." ");
         }else{
-            $ar = explode("," , $prof[5]);
+            $trimmedS6 = trim($prof[5]);
+            $ar = explode("," , $trimmedS6);
             $arr = "";
             foreach ($ar as $key => $value) {
-                if ($value == $word) {
+                if (trim($value) == $word) {
                     $arr .= "";
                 }else{
                     if ($arr == "") {
                         $arr .= $value;
                     }else{
-                        $arr .= ", " . $value;
+                        $arr .= ", " . trim($value);
                     }
                 }
             }
@@ -2274,7 +2705,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Добавить ценности', 'callback_data' => 'pushNeeds']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
@@ -2286,7 +2717,7 @@ if (isset($data['callback_query'])) {
         }
         // Отправляем новое сообщение, если в профиле еще есть другие ценности
         else{
-            $arrTo6 = array();
+            $needs6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds')));
@@ -2308,10 +2739,10 @@ if (isset($data['callback_query'])) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $needs6 = explode("," , $value);
-                    foreach ($needs6 as $key => $value) {
-                        $msgText3 .= trim($value) . "\n";
-                        array_push($arrTo6, $value);
+                    $arr = explode("," , $value);
+                    foreach ($arr as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($needs6, trim($value1));
                     }
                 }
             }
@@ -2321,14 +2752,14 @@ if (isset($data['callback_query'])) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1134")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1134")));
+                        foreach ($needs6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1134")));
                         }
                     }
                 }
             }
 
-            array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
+            array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
             $method = 'sendMessage';
             $send_data = [
                 'text' => "📝 *Мои ценности*\n\n" . $msgText3,
@@ -2357,96 +2788,170 @@ if (isset($data['callback_query'])) {
         $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
         $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
         $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$user."' ");
+        $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             
         $prof = mysqli_fetch_array($profCheck);
         $skill = mysqli_fetch_row($skillsCheck);
         $need = mysqli_fetch_row($needsCheck);
         $int = mysqli_fetch_row($intsCheck);
+        $socials = mysqli_fetch_array($socialCheck);
 
         $msgText1 = "";
         $msgText2 = "";
         $msgText3 = "";
 
         if (!empty($skill)) {
-            $msgText1 = "\n🧑‍💻 _Мои навыки:_ \n";
+            $msgText1 = "\n🧑‍💻 <i>Мои навыки:</i> \n";
                 // Выводим скиллы в правильном виде
             foreach ($skill as $key => $value) {
                 if ($key == 0 and !empty($value)) {
-                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 1 and !empty($value)) {
-                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 2 and !empty($value)) {
-                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 3 and !empty($value)) {
-                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 4 and !empty($value)) {
-                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText1 .= "*" . trim($value) . "*\n";
+                    $msgText1 .= "<b>" . trim($value) . "</b>\n";
                 }
             }
         }
 
         if (!empty($need)) {
-            $msgText2 = "\n📝 _Мои ценности:_ \n";
+            $msgText2 = "\n📝 <i>Мои ценности:</i> \n";
                 // Выводим ценности в правильном виде
             foreach ($need as $key => $value) {
                 if ($key == 0 and !empty($value)) {
-                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 1 and !empty($value)) {
-                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 2 and !empty($value)) {
-                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 3 and !empty($value)) {
-                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 4 and !empty($value)) {
-                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText2 .= "*" . trim($value) . "*\n";
+                    $msgText2 .= "<b>" . trim($value) . "</b>\n";
                 }
             }
         }    
         
         if (!empty($int)) {
-            $msgText3 = "\n🚲 _Мои интересы:_ \n";
+            $msgText3 = "\n🚲 <i>Мои интересы:</i> \n";
                 // Выводим ценности в правильном виде
             foreach ($int as $key => $value) {
                 if ($key == 0 and !empty($value)) {
-                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 1 and !empty($value)) {
-                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 2 and !empty($value)) {
-                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 3 and !empty($value)) {
-                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 4 and !empty($value)) {
-                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}*" . trim($value) . "*\n";
+                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText3 .= "*" . trim($value) . "*\n";
+                    $msgText3 .= "<b>" . trim($value) . "</b>\n";
                 }
             }
+        }
+
+        $soc = "";
+
+        if (!empty($prof['userAge'])) {
+            $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+        }
+
+        if (!empty($socials['inst'])) {
+            $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+            if ($soc == "") {
+                $soc = $inst;
+            }else{
+                $soc .= ", ".$inst;
+            }
+        }else{
+            $inst = "";
+        }
+
+        if (!empty($socials['tiktok'])) {
+            $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+            if ($soc == "") {
+                $soc = $tiktok;
+            }else{
+                $soc .= ", ".$tiktok;
+            }
+        }else{
+            $tiktok = "";
+        }
+
+        if (!empty($socials['facebook'])) {
+            $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+            if ($soc == "") {
+                $soc = $facebook;
+            }else{
+                $soc .= ", ".$facebook;
+            }
+        }else{
+            $facebook = "";
+        }
+
+        if (!empty($socials['viber'])) {
+            $viber = "<b>Viber - ".$socials['viber']."</b>";
+            if ($soc == "") {
+                $soc = $viber;
+            }else{
+                $soc .= ", ".$viber;
+            }
+        }else{
+            $viber = "";
+        }
+
+        if (!empty($socials['whatsapp'])) {
+            $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+            if ($soc == "") {
+                $soc = $whatsapp;
+            }else{
+                $soc .= ", ".$whatsapp;
+            }
+        }else{
+            $whatsapp = "";
+        }
+
+        if (!empty($socials['anotherSocials'])) {
+            $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+            if ($soc == "") {
+                $soc = $anotherSocials;
+            }else{
+                $soc .= ", ".$anotherSocials;
+            }
+        }else{
+            $anotherSocials = "";
         }    
 
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "😁 *Мой профиль*\n\n*".$prof['name']." ".$prof['surname']."*\n\n_Возраст:_ *".$prof['userAge']."*\n".$msgText1.$msgText2.$msgText3,
-                    "parse_mode" => "Markdown",
+                    'text' => "😁 <b>Мой профиль\n\n".$prof['name']." ".$prof['surname']."</b>".$age.$msgText1.$msgText2.$msgText3."\n".$soc,
+                    "parse_mode" => "html",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -2480,8 +2985,8 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "😁 *Мой профиль*\n\n*".$prof['name']." ".$prof['surname']."*\n\n_Возраст:_ *".$prof['userAge']."*\n".$msgText1.$msgText2.$msgText3,
-                    "parse_mode" => "Markdown",
+                    'caption' => "😁 <b>Мой профиль\n\n".$prof['name']." ".$prof['surname']."</b>".$age.$msgText1.$msgText2.$msgText3."\n".$soc,
+                    "parse_mode" => "html",
                     'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
@@ -2535,9 +3040,9 @@ if (isset($data['callback_query'])) {
         $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = ".$user." ");
         $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = ".$user." ");
 
-        $skills = mysqli_fetch_row($skillsCheck);
-        $needs = mysqli_fetch_row($needsCheck);
-        $ints = mysqli_fetch_row($intsCheck);
+        $skills = mysqli_fetch_array($skillsCheck);
+        $needs = mysqli_fetch_array($needsCheck);
+        $ints = mysqli_fetch_array($intsCheck);
         $prof = mysqli_fetch_array($profCheck);
 
         $needToComplete = "";
@@ -2599,7 +3104,7 @@ if (isset($data['callback_query'])) {
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
         if (empty($prof['userAge']) or empty($prof['sex']) or empty($skills) or empty($needs) or empty($ints) or empty($prof['name'])) {
-            $method = 'editMessageText';
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким навыком, мы вас оповестим\n\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
                 'reply_markup' => [
@@ -2616,6 +3121,7 @@ if (isset($data['callback_query'])) {
             $send_data['chat_id'] = $func['message']['chat']['id'];
             $send_data['message_id'] = $func['message']['message_id'];
             sendTelegram($method, $send_data);
+            return;
         }else{
             // Поиск в БД по запросу
             $skillCheck = mysqli_query ($con, "SELECT `userID` FROM `Skills` WHERE (s1 LIKE '%".$search."%') OR (s2 LIKE '%".$search."%') OR (s3 LIKE '%".$search."%') OR (s4 LIKE '%".$search."%') OR (s5 LIKE '%".$search."%') ");
@@ -2627,7 +3133,9 @@ if (isset($data['callback_query'])) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -2676,15 +3184,175 @@ if (isset($data['callback_query'])) {
 
                 // Выводим данные первого человека
                 $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName`, `userAge` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$ids[0]."' ");
+                $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$ids[0]."' ");
+                $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$ids[0]."' ");
+                $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$ids[0]."' ");
+
                 $prof = mysqli_fetch_array($profCheck);
+                $skill = mysqli_fetch_row($skillsCheck);
+                $need = mysqli_fetch_row($needsCheck);
+                $int = mysqli_fetch_row($intsCheck);
+                $socials = mysqli_fetch_array($socialCheck);
+
+                $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
 
                 // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
                     if ($prof['userPhoto'] == "") {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "* " . 'tg://user?id='.$ids[0],
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -2703,8 +3371,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -2731,8 +3399,8 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -2754,8 +3422,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name'] . " " . $prof['surname'] ."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -2803,7 +3471,7 @@ if (isset($data['callback_query'])) {
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "📝 *Мои ценности\n\nСейчас у вас указано:* ".$word."\n\n_Просмотрите все ценности и найдите самую важную для вас!\nВыберите 5 ценностей начиная с самой важной:_",
+                'text' => "📝 *Мои ценности\n\nСейчас у вас указано:\n* \u{0031}\u{FE0F}\u{20E3}".$word."\n\n_Просмотрите все ценности и найдите самую важную для вас!\nВыберите 5 ценностей начиная с самой важной:_",
                 "parse_mode" => "Markdown",
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -2961,68 +3629,104 @@ if (isset($data['callback_query'])) {
                         // Выдаем монеты
                         mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
-                        $method = 'editMessageText';
-                        $send_data = [
-                            'text' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."*_ и получили 100 монет за добавление 5 ценностей. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:",
-                            'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
-                            ],
-                            [
-                                ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
-                            ]
+                        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+                        $send_data['chat_id'] = $user;
+                        sendTelegram('deleteMessage', $send_data);
+
+                        $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+                        $needs = mysqli_fetch_row($needsCheck);
+                        // Выводим ценности в правильном виде
+                        $msgText2 = "";
+                        foreach ($needs as $key => $value) {
+                            if ($key == 0 and !empty($value)) {
+                                $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                            }
+                            if ($key == 1 and !empty($value)) {
+                                $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                            }
+                            if ($key == 2 and !empty($value)) {
+                                $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                            }
+                            if ($key == 3 and !empty($value)) {
+                                $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                            }
+                            if ($key == 4 and !empty($value)) {
+                                $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                            }
+                            if ($key == 5 and !empty($value)) {
+                                $msgText2 .= trim($value) . "\n";
+                            }
+                        }
+
+                        $response = [
+                            'chat_id' => $user,
+                            'caption' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."* _и получили 100 монет за добавление 5 ценностей.\n\n!Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню!\n\nСейчас у вас указано:_ \n*".$msgText2."*\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
+                            "parse_mode" => "Markdown",
+                            'photo' => curl_file_create("../tgBot/BotPic/post_332.jpg"),
+                            'reply_markup'=>json_encode([
+                                'inline_keyboard'=>[
+                                    [
+                                        ['text' => 'Здоровье', 'callback_data' => 'Здоровье SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Карьера', 'callback_data' => 'Карьера SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Семья', 'callback_data' => 'Семья SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Богатство', 'callback_data' => 'Богатство SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Духовное развитие', 'callback_data' => 'Духовное развитие SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Спорт', 'callback_data' => 'Спорт SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Осознанность', 'callback_data' => 'Осознанность SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Развитие', 'callback_data' => 'Развитие SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Свобода', 'callback_data' => 'Свобода SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Миссия', 'callback_data' => 'Миссия SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Отношения с людьми', 'callback_data' => 'Отношения с людьми SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Любовь', 'callback_data' => 'Любовь SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Амбиции', 'callback_data' => 'Амбиции SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Отдых', 'callback_data' => 'Отдых SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Благодарность', 'callback_data' => 'Благодарность SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => 'Принятие', 'callback_data' => 'Принятие SexSer3ch']
+                                    ],
+                                    [
+                                        ['text' => '👈 Вернуться в профиль', 'callback_data' => 'profile']
+                                    ]
                                 ]
-                            ]
+                            ])
                         ];
-                        $send_data['chat_id'] = $func['message']['chat']['id'];
-                        $send_data['message_id'] = $func['message']['message_id'];
-                        sendTelegram($method, $send_data);
+                                
+                        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+                        curl_setopt($ch, CURLOPT_POST, 1);  
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_HEADER, false);
+                        curl_exec($ch);
+                        curl_close($ch);
                         return;
                     }
                 }else{
@@ -3033,11 +3737,35 @@ if (isset($data['callback_query'])) {
                         mysqli_query ($con, "UPDATE `Needs` SET n6 = '".$needs[5]."' WHERE userID = ".$user." "); 
                     }
                 }
+                $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+                $needs = mysqli_fetch_row($needsCheck);
+                // Выводим ценности в правильном виде
+                $msgText2 = "";
+                foreach ($needs as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText2 .= trim($value) . "\n";
+                    }
+                }
 
                 // Выводим новое сообщение
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."*\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
+                    'text' => "📝 *Мои ценности*\n\n_Вы добавили_ *".$word."*\n\n_Сейчас у вас указано:_ \n*".$msgText2."*\n\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -3140,7 +3868,7 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Senior(Профессионал)', 'callback_data' => 'Senior,' . $prof]  
                     ],
                     [
-                        ['text' => '👈 Вурнуться к выбору навыка', 'callback_data' => 'mySkills']  
+                        ['text' => '👈 Вернуться к выбору навыка', 'callback_data' => 'mySkills']  
                     ]
                 ]
             ])
@@ -3154,6 +3882,7 @@ if (isset($data['callback_query'])) {
         curl_close($ch);
         return;
     }
+    // Поиск с кем вместе обучаться
     else if ($data['callback_query']['data'] == 'learnFinder'){
         // Удаляем старое сообщение
         $user = $func['from']['id'];
@@ -3171,10 +3900,19 @@ if (isset($data['callback_query'])) {
                         ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill s1erch']
                     ],
                     [
-                        ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill s1erch']
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill s1erch']
                     ],
                     [
                         ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill s1erch']
                     ],
                     [
                         ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill s1erch']
@@ -3183,28 +3921,7 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill s1erch']
                     ],
                     [
-                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill s1erch']
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill s1erch']
                     ],
                     /*[
                         ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill s1erch']
@@ -3213,7 +3930,7 @@ if (isset($data['callback_query'])) {
                         ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'peopleFinder']
                     ],
                     [
-                        ['text' => 'Следующая страница 👉', 'callback_data' => 'learnFinder2']
+                        ['text' => '2 страница 👉', 'callback_data' => 'learnFinder2']
                     ]
                 ]
             ])
@@ -3241,16 +3958,66 @@ if (isset($data['callback_query'])) {
             'reply_markup'=>json_encode([
                 'inline_keyboard'=>[
                     [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill s1erch']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill s1erch']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill s1erch']
+                    ],
+                    [
                         ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill s1erch']
                     ],
                     [
                         ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill s1erch']
                     ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill s1erch']
+                    ],*/
+                    [
+                        ['text' => '👈 1 страница', 'callback_data' => 'learnFinder'],
+                        ['text' => '3 страница 👉', 'callback_data' => 'learnFinder3']
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
+    else if ($data['callback_query']['data'] == 'learnFinder3'){
+        // Удаляем старое сообщение
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_216.png"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill s1erch']
                     ],
                     [
                         ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill s1erch']
@@ -3260,9 +4027,6 @@ if (isset($data['callback_query'])) {
                     ],
                     [
                         ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill s1erch']
-                    ],
-                    [
-                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill s1erch']
                     ],
                     [
                         ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill s1erch']
@@ -3279,14 +4043,8 @@ if (isset($data['callback_query'])) {
                     [
                         ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill s1erch']
                     ],
-                    /*[
-                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill s1erch']
-                    ],*/
                     [
-                        ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'peopleFinder']
-                    ],
-                    [
-                        ['text' => '👈 Прошлая страница', 'callback_data' => 'learnFinder']
+                        ['text' => '👈 2 страница', 'callback_data' => 'learnFinder2']
                     ]
                 ]
             ])
@@ -3300,6 +4058,7 @@ if (isset($data['callback_query'])) {
         curl_close($ch);
         return;
     }
+    // Поиск с кем провести время
     else if ($data['callback_query']['data'] == 'enterestsFinder'){
         // Удаляем старое сообщение
         $user = $func['from']['id'];
@@ -3401,6 +4160,54 @@ if (isset($data['callback_query'])) {
             curl_close($ch);
             return;
         }
+    }
+    else if ($data['callback_query']['data'] == 'myNameAge'){
+        $user = $func['from']['id']; 
+        $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
+        $name = mysqli_fetch_array($nameCheck);
+
+        // Удаляем сообщение с профилем
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'caption' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
+            'parse_mode' => 'markdown',
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_313.png"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Изменить имя', 'callback_data' => 'changeName']
+                    ],
+                    [
+                        ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
+                    ],
+                    [
+                        ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
+                    ],
+                    [
+                        ['text' => 'Указать пол', 'callback_data' => 'changeSex']
+                    ],
+                    [
+                        ['text' => 'Добавить фото', 'callback_data' => 'plusPhoto']
+                    ],
+                    [
+                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }
     else if ($data['callback_query']['data'] == 'Мужской SexSe2rch'){
         // Удаляем старое сообщение
@@ -3766,6 +4573,7 @@ if (isset($data['callback_query'])) {
             return;
         }
     }
+    // Поиск клиентов
     else if ($data['callback_query']['data'] == 'clientsFinder'){
         // Удаляем старое сообщение
         $user = $func['from']['id'];
@@ -3783,10 +4591,19 @@ if (isset($data['callback_query'])) {
                         ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill ser1ch']
                     ],
                     [
-                        ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill ser1ch']
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill ser1ch']
                     ],
                     [
                         ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill ser1ch']
                     ],
                     [
                         ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill ser1ch']
@@ -3795,28 +4612,7 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill ser1ch']
                     ],
                     [
-                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill ser1ch']
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill ser1ch']
                     ],
                     /*[
                         ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill ser1ch']
@@ -3825,7 +4621,7 @@ if (isset($data['callback_query'])) {
                         ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'peopleFinder']
                     ],
                     [
-                        ['text' => 'Следующая страница 👉', 'callback_data' => 'clientsFinder2']
+                        ['text' => '2 страница 👉', 'callback_data' => 'clientsFinder2']
                     ]
                 ]
             ])
@@ -3853,16 +4649,66 @@ if (isset($data['callback_query'])) {
             'reply_markup'=>json_encode([
                 'inline_keyboard'=>[
                     [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill ser1ch']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill ser1ch']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill ser1ch']
+                    ],
+                    [
                         ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill ser1ch']
                     ],
                     [
                         ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill ser1ch']
                     ],
+                    /*[
+                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill ser1ch']
+                    ],*/
+                    [
+                        ['text' => '👈 1 страница', 'callback_data' => 'clientsFinder'],
+                        ['text' => '3 страница 👉', 'callback_data' => 'clientsFinder3']
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
+    else if ($data['callback_query']['data'] == 'clientsFinder3'){
+        // Удаляем старое сообщение
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_214.png"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
                         ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill ser1ch']
                     ],
                     [
                         ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill ser1ch']
@@ -3872,9 +4718,6 @@ if (isset($data['callback_query'])) {
                     ],
                     [
                         ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill ser1ch']
-                    ],
-                    [
-                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill ser1ch']
                     ],
                     [
                         ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill ser1ch']
@@ -3891,14 +4734,8 @@ if (isset($data['callback_query'])) {
                     [
                         ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill ser1ch']
                     ],
-                    /*[
-                        ['text' => '🆘 ДОБАВИТЬ СВОЙ НАВЫК 🆘', 'callback_data' => 'imNotFindMySkill ser1ch']
-                    ],*/
                     [
-                        ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'peopleFinder']
-                    ],
-                    [
-                        ['text' => '👈 Прошлая страница', 'callback_data' => 'clientsFinder']
+                        ['text' => '👈 2 страница', 'callback_data' => 'clientsFinder2']
                     ]
                 ]
             ])
@@ -3912,6 +4749,7 @@ if (isset($data['callback_query'])) {
         curl_close($ch);
         return;
     }
+    // Поиск специалиста
     else if ($data['callback_query']['data'] == 'skillsFinder'){
         // Удаляем старое сообщение
         $user = $func['from']['id'];
@@ -3929,10 +4767,19 @@ if (isset($data['callback_query'])) {
                         ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill-find']
                     ],
                     [
-                        ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill-find']
+                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill-find']
+                    ],
+                    [
+                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill-find']
                     ],
                     [
                         ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill-find']
+                    ],
+                    [
+                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill-find']
+                    ],
+                    [
+                        ['text' => 'Крюинг', 'callback_data' => 'crewingSkill-find']
                     ],
                     [
                         ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill-find']
@@ -3941,32 +4788,11 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill-find']
                     ],
                     [
-                        ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill-find']
-                    ],
-                    [
-                        ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill-find']
-                    ],
-                    [
-                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill-find']
-                    ],
-                    [
-                        ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill-find']
-                    ],
-                    [
-                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill-find']
-                    ],
-                    [
-                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill-find']
-                    ],
-                    [
-                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill-find']
-                    ],
-                    [
-                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill-find']
+                        ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill-find']
                     ],
                     [
                         ['text' => '👈 Вернуться в "Поиск людей"', 'callback_data' => 'peopleFinder'],
-                        ['text' => 'Следующая страница 👉', 'callback_data' => 'skillsFinder2']
+                        ['text' => '2 страница 👉', 'callback_data' => 'skillsFinder2']
                     ]
                 ]
             ])
@@ -3994,16 +4820,63 @@ if (isset($data['callback_query'])) {
             'reply_markup'=>json_encode([
                 'inline_keyboard'=>[
                     [
+                        ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill-find']
+                    ],
+                    [
+                        ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill-find']
+                    ],
+                    [
+                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill-find']
+                    ],
+                    [
+                        ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill-find']
+                    ],
+                    [
+                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill-find']
+                    ],
+                    [
+                        ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill-find']
+                    ], 
+                    [
+                        ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill-find']
+                    ],
+                    [
                         ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill-find']
                     ],
                     [
                         ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill-find']
                     ],
                     [
-                        ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill-find']
-                    ],
+                        ['text' => '👈 1 страница', 'callback_data' => 'skillsFinder'],
+                        ['text' => '3 страница 👉', 'callback_data' => 'skillsFinder3']
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
+    else if ($data['callback_query']['data'] == 'skillsFinder3'){
+        // Удаляем старое сообщение
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_215.png"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
                     [
-                        ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill-find']
+                        ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill-find']
                     ],
                     [
                         ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill-find']
@@ -4013,9 +4886,6 @@ if (isset($data['callback_query'])) {
                     ],
                     [
                         ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill-find']
-                    ],
-                    [
-                        ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill-find']
                     ],
                     [
                         ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill-find']
@@ -4033,8 +4903,7 @@ if (isset($data['callback_query'])) {
                         ['text' => 'Юриспруденция', 'callback_data' => 'yuristSkill-find']
                     ],
                     [
-                        ['text' => '👈 Предыдущая страница', 'callback_data' => 'skillsFinder'],
-                        ['text' => '👈 Вернуться в "Поиск людей"', 'callback_data' => 'peopleFinder']
+                        ['text' => '👈 2 страница', 'callback_data' => 'skillsFinder2']
                     ]
                 ]
             ])
@@ -4091,6 +4960,7 @@ if (isset($data['callback_query'])) {
         curl_close($ch);
         return;
     }
+    // Поиск клиентов
     else if (strpos($data['callback_query']['data'], 'Трейни') !== false || strpos($data['callback_query']['data'], 'Джуниор') !== false || strpos($data['callback_query']['data'], 'Мидл') !== false || strpos($data['callback_query']['data'], 'Сеньор') !== false){
         $user = $func['from']['id'];
         $lvl = explode("," , $data['callback_query']['data']);
@@ -4115,9 +4985,9 @@ if (isset($data['callback_query'])) {
         $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `sex`, `userAge` FROM `MainInfo` WHERE userID = ".$user." ");
         
         $prof = mysqli_fetch_array($profCheck);
-        $needs = mysqli_fetch_row($needsCheck);
-        $skills = mysqli_fetch_row($skillsCheck);
-        $ints = mysqli_fetch_row($intsCheck);
+        $needs = mysqli_fetch_array($needsCheck);
+        $skills = mysqli_fetch_array($skillsCheck);
+        $ints = mysqli_fetch_array($intsCheck);
 
         $needToComplete = "";
 
@@ -4174,7 +5044,7 @@ if (isset($data['callback_query'])) {
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
         if (empty($needs) or empty($prof['name']) or empty($prof['surname']) or empty($ints) or empty($skills) or empty($prof['sex']) or empty($prof['userAge'])) {
-            $method = 'editMessageText';
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким навыком, мы вас оповестим\n\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
                 'reply_markup' => [
@@ -4202,7 +5072,9 @@ if (isset($data['callback_query'])) {
             foreach ($usersCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -4250,20 +5122,180 @@ if (isset($data['callback_query'])) {
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName`, `userAge` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$ids[0]."' ");
+                $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$ids[0]."' ");
+                $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$ids[0]."' ");
+                $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$ids[0]."' ");
+
                 $prof = mysqli_fetch_array($profCheck);
+                $skill = mysqli_fetch_row($skillsCheck);
+                $need = mysqli_fetch_row($needsCheck);
+                $int = mysqli_fetch_row($intsCheck);
+                $socials = mysqli_fetch_array($socialCheck);
+
+                $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
 
                 // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
-                    if (empty($prof['userPhoto'])) {
+                    if ($prof['userPhoto'] == "") {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]  
+                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]
                                     ],
                                     [
                                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -4278,8 +5310,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -4306,8 +5338,8 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -4329,8 +5361,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -4395,7 +5427,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Senior(Профессионал)', 'callback_data' => 'Сеньор,' . $prof]  
                         ],
                         [
-                            ['text' => '👈 Вурнуться к выбору категории', 'callback_data' => 'clientsFinder']  
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'clientsFinder']  
                         ]
                     ]
                 ])
@@ -4408,6 +5440,156 @@ if (isset($data['callback_query'])) {
             curl_exec($ch);
             curl_close($ch);
             return;
+    }
+    else if (strpos($data['callback_query']['data'], '1122') !== false) {
+        // Удаляем сообщение по которому нажали
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Достаем город и страну человека
+        $user = $func['from']['id'];
+        $city = preg_replace("/1122/i", "", $data['callback_query']['data']);
+        $city = trim($city);
+
+        mysqli_query($con, "UPDATE `MainInfo` SET location = '".$city."' WHERE userID = ".$user." ");
+        mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = ".$user." ");
+
+        $response = [
+            'chat_id' => $user,
+            'caption' => "👌 Отлично, чат в твоем городе я уже нашел, но для полной регистрации мне нужно знать твой номер. \nНажми на кнопку ниже 👇",
+            'parse_mode' => "Markdown",
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_192.png"),
+            'reply_markup'=>json_encode([
+                resize_keyboard =>true,
+                one_time_keyboard => true,
+                'keyboard' => [
+                    [
+                        ['text' => '📱 Поделиться номером', request_contact => true]
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
+    else if ($data['callback_query']['data'] == "sendGeoFrom5List1"){
+        // Удаляем сообщение по которому нажали
+        $user = $func['from']['id'];
+
+        // Пушим в БД, чтоб человек мог писать в чат
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'send3Geo4From5List', mesToChange = '".$data['callback_query']['message']['message_id']."'  WHERE userID = ".$user." ");
+
+        $method = 'editMessageText';
+        $send_data = [
+            'text' => "_Напиши мне название своего_ *города* _или_ *страну* _и выбери правильный из появившегося списка_",
+            "parse_mode" => "Markdown"
+            ];
+    }
+    else if ($data['callback_query']['data'] == "send3Geo4From5List"){
+        // Удаляем сообщение по которому нажали
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        // Пишем человеку инструкцию, что нужно написать название своего города и из появившегося списка - выбрать его
+        $method = 'sendMessage';
+        $send_data = [
+            'text' => "*Инструкция*\n\n_В следующем меню тебе нужно будет написать мне название своего_ *города* _или_ *страну* _и выбрать правильный из появившегося списка_",
+            "parse_mode" => "Markdown",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Далее', 'callback_data' => 'sendGeoFrom5List1']  
+                        ]
+                    ]
+                ]
+            ];
+    }
+    else if ($data['callback_query']['data'] == "send1Geo2Automatically"){
+        // Удаляем сообщение по которому нажали
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $func['from']['id'];
+        sendTelegram('deleteMessage', $send_data);
+
+        $response = [
+            'chat_id' => $user,
+            'caption' => "_Внизу, где у тебя обычно клавиатура, появилась кнопка_ *'Поделиться местоположением'*_. Нажми на нее, чтоб автоматически отправить мне свою геопозицию._",
+            'parse_mode' => "Markdown",
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_236.jpg"),
+            'reply_markup'=>json_encode([
+                resize_keyboard =>true,
+                one_time_keyboard => true,
+                'keyboard' => [
+                    [
+                        ['text' => 'Поделиться местоположением', request_location => true]
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
+    }
+    else if ($data['callback_query']['data'] == 'myCoins'){
+        // Удаляем старое сообщение
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        $userCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
+        $coins = mysqli_fetch_array($userCoins);
+
+        if ($coins['coins'] == "") {
+            $coins = 0;
+        }else{
+            $coins = $coins['coins'];
+        }
+
+        $response = [
+            'chat_id' => $user,
+            'caption' => "_У вас на счету:_ " . "*" . $coins . "*" . ' монет',
+            'parse_mode' => "Markdown",
+            'protect_content' => true,
+            'photo' => curl_file_create("../tgBot/BotPic/post_234.png"),
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Как заработать монеты?', 'callback_data' => 'howToMakeCoins']
+                    ],
+                    [
+                        ['text' => 'Потратить монеты', 'callback_data' => 'shop']
+                    ],
+                    [
+                        ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                    ]
+                ]
+            ])
+        ];                 
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }
     // Поиск с кем обучаться в регистрации
     else if (strpos($data['callback_query']['data'], 'firstch') !== false) {
@@ -4424,21 +5606,23 @@ if (isset($data['callback_query'])) {
         mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchLearn`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
-        $method = 'sendMessage';
+        $method = 'editMessageText';
         $send_data = [
-            'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для обучения',
+            'text' => "_Отлично! Теперь мне нужно узнать_ *твое местоположение*_, чтоб добавить тебя в_ *чат для обучения* _и помогать находить людей из_ *твоего города*",
+            "parse_mode" => "Markdown",
             'reply_markup' => [
-                resize_keyboard =>true,
-                one_time_keyboard => true,
-                'keyboard' => [
+                'inline_keyboard' => [
                     [
-                        ['text' => 'Поделиться местоположением', request_location => true]
+                        ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                    ],
+                    [
+                        ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
                     ]
                 ]
             ]
         ];
     }
-    // Поиск клиентов в регистрации
+    // Поиск специалиста в регистрации
     else if (strpos($data['callback_query']['data'], 'secondch') !== false) {
         $user = $func['from']['id'];
         // Удаляем ch из профессии
@@ -4450,25 +5634,27 @@ if (isset($data['callback_query'])) {
         // Пушим в БД
         mysqli_query ($con, "UPDATE `Skills` SET s1 = '".$skill."', lvl1 = 'Senior' WHERE userID = ".$user." ");
         mysqli_query ($con, "UPDATE `SkillAdds` SET search1 = 'Ищу клиентов' WHERE userID = ".$user." ");
-        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchClients`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchSpecialist`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
-        $method = 'sendMessage';
+        $method = 'editMessageText';
         $send_data = [
-            'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для поиска клиентов',
+            'text' => "_Отлично! Теперь мне нужно узнать_ *твое местоположение*_, чтоб добавить тебя в_ *чат для обучения* _и помогать находить людей из_ *твоего города*",
+            "parse_mode" => "Markdown",
             'reply_markup' => [
-                resize_keyboard =>true,
-                one_time_keyboard => true,
-                'keyboard' => [
+                'inline_keyboard' => [
                     [
-                        ['text' => 'Поделиться местоположением', request_location => true]
+                        ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                    ],
+                    [
+                        ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
                     ]
                 ]
             ]
         ];
     }
 
-    // Поиск специалиста в регистрации
+    // Поиск клиентов в регистрации
     else if (strpos($data['callback_query']['data'], 'thirdch') !== false) {
         $user = $func['from']['id'];
         // Удаляем ch из профессии
@@ -4478,18 +5664,20 @@ if (isset($data['callback_query'])) {
         $skill = trim($word);
 
         // Пушим кого человек ищет в БД
-        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchSpecialist`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
+        mysqli_query ($con, "INSERT INTO `Searches`(`userID`, `searchClients`, `active`, `Date`) VALUES ('".$user."', '".$skill."', '1', NOW()) ");
 
         // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
-        $method = 'sendMessage';
+        $method = 'editMessageText';
         $send_data = [
-            'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для поиска специалиста',
+            'text' => "_Отлично! Теперь мне нужно узнать_ *твое местоположение*_, чтоб добавить тебя в_ *чат для обучения* _и помогать находить людей из_ *твоего города*",
+            "parse_mode" => "Markdown",
             'reply_markup' => [
-                resize_keyboard =>true,
-                one_time_keyboard => true,
-                'keyboard' => [
+                'inline_keyboard' => [
                     [
-                        ['text' => 'Поделиться местоположением', request_location => true]
+                        ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                    ],
+                    [
+                        ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
                     ]
                 ]
             ]
@@ -4529,7 +5717,12 @@ if (isset($data['callback_query'])) {
                     $msgArray .= trim($value) . "\n";
                 }
             }
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Упс! Такая ценность у вас уже есть.\n\nМои ценности:\n" . $msgArray . "\n\nВыберите 5 ценностей начиная с самой важной:",
                 'reply_markup' => [
@@ -4599,7 +5792,12 @@ if (isset($data['callback_query'])) {
                 // Пушим новую ценность в БД
                 mysqli_query ($con, "UPDATE `Needs` SET n1 = '".$word."' WHERE userID = ".$user." ");                
 
-                $method = 'editMessageText';
+                $user = $func['from']['id']; 
+                $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+                $send_data['chat_id'] = $user;
+                sendTelegram('deleteMessage', $send_data);
+
+                $method = 'sendMessage';
                 $send_data = [
                     'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nМои ценности:\n" . "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($word) . "\n\nВыберите 5 ценностей начиная с самой важной:",
                     'reply_markup' => [
@@ -4661,6 +5859,7 @@ if (isset($data['callback_query'])) {
                 $send_data['chat_id'] = $func['message']['chat']['id'];
                 $send_data['message_id'] = $func['message']['message_id'];
                 sendTelegram($method, $send_data);
+                return;
             }
             // Если у человека уже были ценности
             else{
@@ -4694,7 +5893,12 @@ if (isset($data['callback_query'])) {
                     // Выдаем монеты
                     mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
-                    $method = 'editMessageText';
+                    $user = $func['from']['id']; 
+                    $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+                    $send_data['chat_id'] = $user;
+                    sendTelegram('deleteMessage', $send_data);
+
+                    $method = 'sendMessage';
                     $send_data = [
                         'text' => "Мои ценности:\n" . $msgArray . "\n\nВы получили 100 монет за добавление 5 ценностей. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
                     ];
@@ -4704,13 +5908,15 @@ if (isset($data['callback_query'])) {
                     // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
                     $method = 'sendMessage';
                     $send_data = [
-                        'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для поиска специалиста',
+                        'text' => "_Мои ценности:_\n" . $msgArray . "\n\n*Вы получили 100 монет за добавление 5 ценностей*. _Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню_"."_Отлично! Теперь мне нужно узнать_ *твое местоположение*_, чтоб добавить тебя в_ *чат для обучения* _и помогать находить людей из_ *твоего города*",
+                        "parse_mode" => "Markdown",
                         'reply_markup' => [
-                            resize_keyboard =>true,
-                            one_time_keyboard => true,
-                            'keyboard' => [
+                            'inline_keyboard' => [
                                 [
-                                    ['text' => 'Поделиться местоположением', request_location => true]
+                                    ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                                ],
+                                [
+                                    ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
                                 ]
                             ]
                         ]
@@ -4754,7 +5960,12 @@ if (isset($data['callback_query'])) {
                     }
                 }
 
-                $method = 'editMessageText';
+                $user = $func['from']['id']; 
+                $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+                $send_data['chat_id'] = $user;
+                sendTelegram('deleteMessage', $send_data);
+
+                $method = 'sendMessage';
                 $send_data = [
                     'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nМои ценности:\n" . $msgArray . "\n\nВыберите 5 ценностей начиная с самой важной:",
                     'reply_markup' => [
@@ -4816,10 +6027,191 @@ if (isset($data['callback_query'])) {
                 $send_data['chat_id'] = $func['message']['chat']['id'];
                 $send_data['message_id'] = $func['message']['message_id'];
                 sendTelegram($method, $send_data);
+                return;
             }
         }
     }
 }
+else if (strpos($data['callback_query']['data'], 'tni') !== false) {
+        // Поиск в БД такого навыка
+        $user = $func['from']['id'];
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5` FROM `Interests` WHERE userID = ".$user." ");
+        $ints = mysqli_fetch_array($intsCheck);
+
+        // Удаляем слово int из профессии
+        $word = $data['callback_query']['data'];
+        $int = preg_replace("/tni/i", "", $word);
+
+        $msgArray = "";
+
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
+        // Если такое хобби у человека уже есть
+        if ($ints[0] == trim($int) or $ints[1] == trim($int) or $ints[2] == trim($int) or $ints[3] == trim($int) or $ints[4] == trim($int)) {
+
+            foreach ($ints as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 1 and !empty($value)) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 2 and !empty($value)) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 3 and !empty($value)) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+                if ($key == 4 and !empty($value)) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
+                }
+            }
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Упс! У тебя уже есть ' . trim($int) . " в списке интересов\n\nСейчас список твоих интересов выглядит так: " . $msgArray,
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Выбрать другой интерес', 'callback_data' => '1chFirst']
+                        ]
+                    ]
+                ]
+            ];
+            $send_data['chat_id'] = $func['message']['chat']['id'];
+            $send_data['message_id'] = $func['message']['message_id'];
+            sendTelegram($method, $send_data);
+            return;
+        }else{
+            // Если это будет первый интерес в профиле
+            if (empty($ints[0]) and empty($ints[1]) and empty($ints[2]) and empty($ints[3]) and empty($ints[4])) {
+                // Пушим новый интерес в БД
+                mysqli_query ($con, "UPDATE `Interests` SET interest1 = '".trim($int)."' WHERE userID = ".$user." ");
+
+                $method = 'sendMessage';
+                $send_data = [
+                    'text' => "Укажи 5 своих интересов, начиная с самого важного\n\nСейчас у тебя указано:\n" . "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($int) . "\n\nВыбери категорию:",
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
+                            ],
+                            [
+                                ['text' => 'Развелчения 🔻', 'callback_data' => '1 Развлечения']
+                            ],
+                            [
+                                ['text' => 'Бизнес 🔻', 'callback_data' => '1 Бизнес']
+                            ],
+                            [
+                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
+                            ]
+                        ]
+                    ]
+                ];
+                $send_data['chat_id'] = $func['message']['chat']['id'];
+                $send_data['message_id'] = $func['message']['message_id'];
+                sendTelegram($method, $send_data);  
+                return;
+            }
+            // В других случаях
+            else {
+                if (empty($ints[1])) {
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest2 = '".trim($int)."' WHERE userID = ".$user." ");
+                }else if (empty($ints[2])) {
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest3 = '".trim($int)."' WHERE userID = ".$user." ");
+                }else if (empty($ints[3])) {
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest4 = '".trim($int)."' WHERE userID = ".$user." ");
+                }else{
+                    // Пушим новый интерес в БД
+                    mysqli_query ($con, "UPDATE `Interests` SET interest5 = '".trim($int)."' WHERE userID = ".$user." ");
+
+                    // Пушим, что дали награду
+                    mysqli_query ($con, "UPDATE `userRewards` SET InterestsReward = 1 WHERE userID = ".$user." ");
+
+                    // Получаем кол-во монет пользователя
+                    $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
+                    $coins = mysqli_fetch_array($selectCoins);
+
+                    // Плюсуем к монетам награду
+                    $coins = $coins['coins'] + 100;
+
+                    // Выдаем монеты
+                    mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
+
+                    // Выводим человеку сообщение об успешности операции и Спрашиваем локацию
+                    $method = 'sendMessage';
+                    $send_data = [
+                        'text' => "*Ты получил 100 монет за добавление 5 интересов*. _Узнать кол-во монет и как их получить, ты можешь нажав на кнопку 'Монеты' в главном меню_"."\n_Отлично! Теперь мне нужно узнать_ *твое местоположение*_, чтоб добавить тебя в_ *чат для обучения* _и помогать находить людей из_ *твоего города*",
+                        "parse_mode" => "Markdown",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                                ],
+                                [
+                                    ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
+                                ]
+                            ]
+                        ]
+                    ];
+                    $send_data['chat_id'] = $func['message']['chat']['id'];
+                    $send_data['message_id'] = $func['message']['message_id'];
+                    sendTelegram($method, $send_data);
+                    return;
+                }
+
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5` FROM `Interests` WHERE userID = ".$user." ");
+                $ints = mysqli_fetch_array($intsCheck);
+
+                // Выводим интересы в правильном виде
+                if (!empty($ints['interest1'])) {
+                    $msgArray .= "\u{0031}\u{FE0F}\u{20E3}" . " - " . $ints['interest1'] . "\n";
+                }
+                if (!empty($ints['interest2'])) {
+                    $msgArray .= "\u{0032}\u{FE0F}\u{20E3}" . " - " . $ints['interest2'] . "\n";
+                }    
+                if (!empty($ints['interest3'])) {
+                    $msgArray .= "\u{0033}\u{FE0F}\u{20E3}" . " - " . $ints['interest3'] . "\n";
+                }
+                if (!empty($ints['interest4'])) {
+                    $msgArray .= "\u{0034}\u{FE0F}\u{20E3}" . " - " . $ints['interest4'] . "\n";
+                }
+                if (!empty($ints['interest5'])) {
+                    $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . $ints['interest5'] . "\n";
+                }
+
+                $method = 'sendMessage';
+                $send_data = [
+                    'text' => "Укажи 5 своих интересов, начиная с самого важного\n\nСейчас у тебя указано:\n" . $msgArray . "\n\nВыбери категорию:",
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
+                            ],
+                            [
+                                ['text' => 'Развелчения 🔻', 'callback_data' => '1 Развлечения']
+                            ],
+                            [
+                                ['text' => 'Бизнес 🔻', 'callback_data' => '1 Бизнес']
+                            ],
+                            [
+                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
+                            ]
+                        ]
+                    ]
+                ];
+                $send_data['chat_id'] = $func['message']['chat']['id'];
+                $send_data['message_id'] = $func['message']['message_id'];
+                sendTelegram($method, $send_data);
+                return;
+            }
+        }
+    }
     // Поиск с кем вместе обучаться
     else if (strpos($data['callback_query']['data'], 's2erch') !== false) {
         // Узнаем сколько у человека навыков введено в профиле
@@ -4828,13 +6220,13 @@ if (isset($data['callback_query'])) {
         $ints = mysqli_fetch_array($intsCheck);
 
         $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
-        $interests = mysqli_fetch_row($interestsCheck);
+        $interests = mysqli_fetch_array($interestsCheck);
 
         $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
-        $skills = mysqli_fetch_row($skillsCheck);
+        $skills = mysqli_fetch_array($skillsCheck);
 
         $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
-        $needs = mysqli_fetch_row($needsCheck);
+        $needs = mysqli_fetch_array($needsCheck);
 
             // Если навыков меньше 5, тогда выводим сообщение, что нужно еще ввести интересы, чтоб 
         if (empty($skills)) {
@@ -4844,9 +6236,9 @@ if (isset($data['callback_query'])) {
                     $number += 1;
                 }
             }
-            $method = 'editMessageText';
+            $method = 'sendMessage';
             $send_data = [
-                'text' => "_Для того чтобы искать людей, вам нужно добавить еще_ " . "*" . $number . "*" . " _навыков_",
+                'text' => "_Для того чтобы искать людей, тебе нужно добавить еще_ " . "*" . $number . "*" . " _навыков_",
                 "parse_mode" => "Markdown",
                 'reply_markup' => [
                     'inline_keyboard' => [
@@ -4924,7 +6316,7 @@ if (isset($data['callback_query'])) {
             if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
                 $method = 'editMessageText';
                 $send_data = [
-                    'text' => "_Мы запомнили ваш поиск и когда будут появляться люди с такими навыками, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще:_ " . $needToComplete,
+                    'text' => "_Мы запомнили твой поиск и когда будут появляться люди с такими навыками, мы тебя оповестим\nЕсли ты хочешь искать людей самостоятельно, тогда тебе нужно заполнить еще:_ " . $needToComplete,
                     "parse_mode" => "Markdown",
                     'reply_markup' => [
                         'inline_keyboard' => [
@@ -4951,7 +6343,9 @@ if (isset($data['callback_query'])) {
                 foreach ($skillCheck as $key => $value) {
                     mysqli_fetch_array($value);
                     foreach ($value as $key => $value) {
-                        if ($value != $user) {
+                        $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                        $userData = mysqli_fetch_array($userTable);
+                        if ($value != $user && $userData['isPrivate'] == 0) {
                             if ($userNames == "") {
                                 $userNames = $value;
                                 $counter += 1;
@@ -4972,7 +6366,7 @@ if (isset($data['callback_query'])) {
                 if (empty($userNames)) {
                     $response = [
                         'chat_id' => $user,
-                        'caption' => "_Мы не нашли людей с навыком_ *" . $search . "* _,но когда они появятся - вы получите уведомление_",
+                        'caption' => "_Мы не нашли людей с навыком_ *" . $search . "* _,но когда они появятся - ты получишь уведомление_",
                         "parse_mode" => "Markdown",
                         'protect_content' => true,
                         'photo' => curl_file_create("../tgBot/BotPic/post_218.png"),
@@ -4995,25 +6389,185 @@ if (isset($data['callback_query'])) {
                     return;
                 } else {
                     // Пушим список айдишек в БД
-                    mysqli_query($con, "UPDATE `TrackingMenu` SET searchIDs = '" . $userNames . "' WHERE userID = " . $user . " ");
+                mysqli_query ($con, "UPDATE `TrackingMenu` SET searchIDs = '".$userNames."' WHERE userID = ".$user." ");
 
-                    $ids = explode(',', $userNames);
+                $ids = explode(',', $userNames);
 
-                    // Выводим данные первого человека
-                    $profCheck = mysqli_query($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
-                    $prof = mysqli_fetch_array($profCheck);
+                // Выводим данные первого человека
+                $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName`, `userAge` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$ids[0]."' ");
+                $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$ids[0]."' ");
+                $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$ids[0]."' ");
+                $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$ids[0]."' ");
 
-                    // Если кол-во найденных профилей = 1
+                $prof = mysqli_fetch_array($profCheck);
+                $skill = mysqli_fetch_row($skillsCheck);
+                $need = mysqli_fetch_row($needsCheck);
+                $int = mysqli_fetch_row($intsCheck);
+                $socials = mysqli_fetch_array($socialCheck);
+
+                $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
+
+                // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
-                    if (empty($prof['userPhoto'])) {
+                    if ($prof['userPhoto'] == "") {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]  
+                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]
                                     ],
                                     [
                                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -5028,8 +6582,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -5056,8 +6610,8 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -5079,8 +6633,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -5726,7 +7280,7 @@ if (isset($data['callback_query'])) {
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
 
-        $statCheck = mysqli_query ($con, "SELECT `coins`, `referals`, `regDate`, `userRank` FROM `MainInfo` WHERE userID='".$user."' ");
+        $statCheck = mysqli_query ($con, "SELECT `coins`, `referals`, `regDate`, `rank` FROM `MainInfo` WHERE userID=".$user." ");
         $stat = mysqli_fetch_array($statCheck);
         
         $response = [
@@ -5789,25 +7343,54 @@ if (isset($data['callback_query'])) {
     else if ($data['callback_query']['data'] == 'plusPhoto'){
         // Удаляем старое сообщение
         $user = $func['from']['id'];
-        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        /*$send_data['message_id'] = $data['callback_query']['message']['message_id'];
         $send_data['chat_id'] = $user;
-        sendTelegram('deleteMessage', $send_data);
+        sendTelegram('deleteMessage', $send_data);*/
+
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'ДобавлениеФото', mesToChange = '".$data['callback_query']['message']."' WHERE userID = ".$user." ");
        
-        $response = [
+        $args1 = [
             'chat_id' => $user,
-            'photo' => curl_file_create("../tgBot/BotPic/post_101.jpg"),
-            'protect_content' => true,
-            'reply_markup'=>json_encode([
+            'message_id' => $lastBotMessage['message_id'],
+            'caption' => " ",
+            'reply_markup'=> json_encode([
                 'inline_keyboard'=>[
                     [
                         ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
                     ]
                 ]            
             ])
-        ];                                
-        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        ];
+        
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/editMessageCaption');  
         curl_setopt($ch, CURLOPT_POST, 1);  
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $args1);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+
+        // Меняем картинку
+        $args2 = [
+            'chat_id' => $user,
+            'message_id' => $lastBotMessage['message_id'],
+            'media' => json_encode([
+                'type' => 'photo',
+                'media' => 'attach://post_101.jpg'
+                ]),
+            'post_101.jpg' => new CURLFile("../tgbot/BotPics/post_101.jpg"),
+            'reply_markup'=> json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                    ]
+                ]            
+            ])
+        ];
+        
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/editMessageMedia');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $args2);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_exec($ch);
@@ -5823,10 +7406,48 @@ if (isset($data['callback_query'])) {
 
         $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
         $socials = mysqli_fetch_array($userSocials);
+
+        if (!empty($socials['inst'])) {
+            $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+        }else{
+            $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+        }
+
+        if (!empty($socials['tiktok'])) {
+            $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+        }else{
+            $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+        }
+
+        if (!empty($socials['facebook'])) {
+            $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+        }else{
+            $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+        }
+
+        if (!empty($socials['viber'])) {
+            $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+        }else{
+            $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+        }
+
+        if (!empty($socials['whatsapp'])) {
+            $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+        }else{
+            $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+        }
+
+        if (!empty($socials['anotherSocials'])) {
+            $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+        }else{
+            $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+        }
        
         $response = [
             'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+            'parse_mode' => "html",
+            'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6098,7 +7719,7 @@ if (isset($data['callback_query'])) {
         if (empty($prof['anotherSocials'])) {
             $method = 'sendMessage';
             $send_data = [
-                'text' => 'Добавить anotherSocial:',
+                'text' => 'Добавить другую социальную сеть:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -6118,7 +7739,7 @@ if (isset($data['callback_query'])) {
         }else{
             $method = 'sendMessage';
             $send_data = [
-                'text' => 'Изменить мой anotherSocial ' . $prof['anotherSocials'],
+                'text' => 'Изменить другую социальную сеть ' . $prof['anotherSocials'],
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -6314,23 +7935,28 @@ if (isset($data['callback_query'])) {
 
         $updateDB = mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = 'tiktok' WHERE userID = ".$user." ");
 
-        $method = 'sendMessage';
-            $send_data = [
-                'text' => 'Отправь мне свой tiktok ник:',
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Сохранить', 'callback_data' => 'Сохранить tiktok']  
-                        ],
-                        [
-                            ['text' => 'Отменить', 'callback_data' => 'Отменить tiktok']  
-                        ]
+        $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_238.png"),
+            'protect_content' => true,
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => 'Сохранить', 'callback_data' => 'Сохранить tiktok']  
+                    ],
+                    [
+                        ['text' => 'Отменить', 'callback_data' => 'Отменить tiktok']  
                     ]
-                ]
-            ];
-            $send_data['chat_id'] = $func['message']['chat']['id'];
-            $send_data['message_id'] = $func['message']['message_id'];
-            sendTelegram($method, $send_data);
+                ]            
+            ])
+        ];                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
         return;
     }
     else if ($data['callback_query']['data'] == 'Сохранить anotherSocial'){
@@ -6380,47 +8006,85 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
-            'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
-            'protect_content' => true,
-            'reply_markup'=>json_encode([
-                'inline_keyboard'=>[
-                    [
-                        ['text' => 'Instagram', 'callback_data' => 'instSocial']  
-                    ],
-                    [
-                        ['text' => 'Tik-Tok', 'callback_data' => 'tikSocial']
-                    ],
-                    [
-                        ['text' => 'Facebook', 'callback_data' => 'fbSocial']
-                    ],
-                    [
-                        ['text' => 'Viber', 'callback_data' => 'viberSocial']
-                    ],
-                    [
-                        ['text' => 'WhatsApp', 'callback_data' => 'wtsSocial']
-                    ],
-                    [
-                        ['text' => 'Другая', 'callback_data' => 'anotherSocial']
-                    ],
-                    [
-                        ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu'],
-                        ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
-                    ]
-                ]            
-            ])
-        ];                                
-        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
-        curl_setopt($ch, CURLOPT_POST, 1);  
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_exec($ch);
-        curl_close($ch);
-        return;
-            }
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
+                    'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
+                    'protect_content' => true,
+                    'reply_markup'=>json_encode([
+                        'inline_keyboard'=>[
+                            [
+                                ['text' => 'Instagram', 'callback_data' => 'instSocial']  
+                            ],
+                            [
+                                ['text' => 'Tik-Tok', 'callback_data' => 'tikSocial']
+                            ],
+                            [
+                                ['text' => 'Facebook', 'callback_data' => 'fbSocial']
+                            ],
+                            [
+                                ['text' => 'Viber', 'callback_data' => 'viberSocial']
+                            ],
+                            [
+                                ['text' => 'WhatsApp', 'callback_data' => 'wtsSocial']
+                            ],
+                            [
+                                ['text' => 'Другая', 'callback_data' => 'anotherSocial']
+                            ],
+                            [
+                                ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu'],
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                            ]
+                        ]            
+                    ])
+                ];                                
+                $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+                curl_setopt($ch, CURLOPT_POST, 1);  
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HEADER, false);
+                curl_exec($ch);
+                curl_close($ch);
+                return;
+        }
     }
     else if ($data['callback_query']['data'] == 'Сохранить tiktok'){
         // Удаляем старое сообщение
@@ -6469,9 +8133,47 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6558,9 +8260,47 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6647,9 +8387,47 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+               if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6741,9 +8519,47 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6830,9 +8646,47 @@ if (isset($data['callback_query'])) {
                 $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
                 $socials = mysqli_fetch_array($userSocials);
 
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
                 $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6902,9 +8756,47 @@ if (isset($data['callback_query'])) {
                 // Получаем из БД все о пользователе
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -6975,9 +8867,47 @@ if (isset($data['callback_query'])) {
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
 
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -7048,9 +8978,47 @@ if (isset($data['callback_query'])) {
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
             
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -7121,9 +9089,47 @@ if (isset($data['callback_query'])) {
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
             
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -7194,9 +9200,47 @@ if (isset($data['callback_query'])) {
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
             
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -7267,9 +9311,47 @@ if (isset($data['callback_query'])) {
             $userSocials = mysqli_query ($con, "SELECT `inst`, `facebook`, `viber`, `tiktok`, `whatsapp`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
             $socials = mysqli_fetch_array($userSocials);
             
-            $response = [
-            'chat_id' => $user,
-            'caption' => "Instagram - " . $socials['inst'] . "\n" . "Tik-Tok - " . $socials['tiktok'] . "\n" . "Facebook - " . $socials['facebook'] . "\n" . "Viber - " . $socials['viber'] . "\n" . "WhatsApp - " . $socials['whatsapp'] . "\n" . "Другая - " . $socials['anotherSocials'],
+            if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b> - <b>" . $socials['inst']."</b>";
+                }else{
+                    $inst = "<b>Instagram</b> - <b>" . $socials['inst']."</b>";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b> - <b>" . $socials['tiktok']."</b>";
+                }else{
+                    $tiktok = "<b>Tik-Tok</b> - <b>" . $socials['tiktok']."</b>";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b> - <b>" . $socials['facebook']."</b>";
+                }else{
+                    $facebook = "<b>Facebook</b> - <b>" . $socials['facebook']."</b>";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b><a href='viber://chat?number=+".$socials['viber']."/'>Viber</a></b> - <b>" . $socials['viber']."</b>";
+                }else{
+                    $viber = "<b>Viber</b> - <b>" . $socials['viber']."</b>";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b> - <b>" . $socials['whatsapp']."</b>";
+                }else{
+                    $whatsapp = "<b>WhatsApp</b> - <b>" . $socials['whatsapp']."</b>";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b> - <b>" . $socials['anotherSocials']."</b>";
+                }else{
+                    $anotherSocials = "<b>Другая</b> - <b>" . $socials['anotherSocials']."</b>";
+                }
+               
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => $inst . "\n" . $tiktok . "\n" . $facebook . "\n" . $viber . "\n" . $whatsapp . "\n" . $anotherSocials,
+                    'parse_mode' => "html",
+                    'disable_web_page_preview' => true,
             'photo' => curl_file_create("../tgBot/BotPic/post_196.png"),
             'protect_content' => true,
             'reply_markup'=>json_encode([
@@ -7307,7 +9389,37 @@ if (isset($data['callback_query'])) {
         curl_exec($ch);
         curl_close($ch);
         return;
+    }
+    else if ($data['callback_query']['data'] == 'feedback'){
+        // Удаляем старое сообщение
+        $user = $func['from']['id'];
+        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
 
+        // Записываем, что человек находится в меню ФИДБЭК
+        mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = 'ФИДБЭК', mesToChange = '".$data['callback_query']['message']['message_id']."' WHERE userID = '".$user."' ");
+        
+        $response = [
+            'chat_id' => $user,
+            'photo' => curl_file_create("../tgBot/BotPic/post_233.png"),
+            'protect_content' => true,
+            'reply_markup'=>json_encode([
+                'inline_keyboard'=>[
+                    [
+                        ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                    ]
+                ]            
+            ])
+        ];                                
+        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+        curl_setopt($ch, CURLOPT_POST, 1);  
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HEADER, false);
+        curl_exec($ch);
+        curl_close($ch);
+        return;
     }
     // Поиск второй половинки
     else if (strpos($data['callback_query']['data'], 'SexSe3rch') !== false) {
@@ -7317,13 +9429,13 @@ if (isset($data['callback_query'])) {
         $ints = mysqli_fetch_array($intsCheck);
 
         $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
-        $interests = mysqli_fetch_row($interestsCheck);
+        $interests = mysqli_fetch_array($interestsCheck);
 
         $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
-        $skills = mysqli_fetch_row($skillsCheck);
+        $skills = mysqli_fetch_array($skillsCheck);
 
         $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
-        $needs = mysqli_fetch_row($needsCheck);
+        $needs = mysqli_fetch_array($needsCheck);
 
         $needToComplete = "";
 
@@ -7384,7 +9496,7 @@ if (isset($data['callback_query'])) {
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
         if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
-            $method = 'editMessageText';
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "_Мы запомнили ваш поиск и когда будут появляться люди с такой ценностью, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще:_ " . $needToComplete,
                 "parse_mode" => "Markdown",
@@ -7413,7 +9525,9 @@ if (isset($data['callback_query'])) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -7461,20 +9575,180 @@ if (isset($data['callback_query'])) {
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                    $profCheck = mysqli_query($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
-                    $prof = mysqli_fetch_array($profCheck);
+                $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName`, `userAge` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$ids[0]."' ");
+                $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$ids[0]."' ");
+                $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$ids[0]."' ");
+                $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$ids[0]."' ");
+
+                $prof = mysqli_fetch_array($profCheck);
+                $skill = mysqli_fetch_row($skillsCheck);
+                $need = mysqli_fetch_row($needsCheck);
+                $int = mysqli_fetch_row($intsCheck);
+                $socials = mysqli_fetch_array($socialCheck);
+
+                $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
 
                 // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
-                    if (empty($prof['userPhoto'])) {
+                    if ($prof['userPhoto'] == "") {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]  
+                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]
                                     ],
                                     [
                                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -7489,8 +9763,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -7517,8 +9791,8 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -7540,8 +9814,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -7723,12 +9997,18 @@ if (isset($data['callback_query'])) {
                         // Выдаем монеты
                         mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
 
+                        $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+                        $send_data['chat_id'] = $user;
+                        sendTelegram('deleteMessage', $send_data);
+
                         // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
-                        $method = 'editMessageText';
-                        $send_data = [
-                            'text' => "Отлично! Вы добавили ".$int." в список своих интересов\n\nВы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
-                            'reply_markup' => [
-                                'inline_keyboard' => [
+                        $response = [
+                            'chat_id' => $user,
+                            'caption' => "_Отлично! Вы добавили_ *".$int."* _в список своих интересов\n\n_*Вы получили 100 монет за добавление 5 интересов*_. Узнать кол-во монет и как их получить, вы можете нажав на кнопку_ *'Монеты'* _в главном меню_",
+                            "parse_mode" => "Markdown",
+                            'photo' => curl_file_create("../tgBot/BotPic/post_330.jpg"),
+                            'reply_markup'=>json_encode([
+                                'inline_keyboard'=>[
                                     [
                                         ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
                                     ],
@@ -7739,11 +10019,16 @@ if (isset($data['callback_query'])) {
                                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                                     ]
                                 ]
-                            ]
+                            ])
                         ];
-                        $send_data['chat_id'] = $func['message']['chat']['id'];
-                        $send_data['message_id'] = $func['message']['message_id'];
-                        sendTelegram($method, $send_data);
+                                
+                        $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+                        curl_setopt($ch, CURLOPT_POST, 1);  
+                        curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_HEADER, false);
+                        curl_exec($ch);
+                        curl_close($ch);
                         return;
                     }
                 }else{
@@ -7755,6 +10040,24 @@ if (isset($data['callback_query'])) {
                         // Пушим новый интерес в БД
                         mysqli_query ($con, "UPDATE `Interests` SET interest6 = '".$pints."' WHERE userID = ".$user." ");
                     }
+                    $method = 'editMessageText';
+                    $send_data = [
+                        'text' => "Отлично! Вы добавили ".$int." в список своих интересов",
+                        'reply_markup' => [
+                            'inline_keyboard' => [
+                                [
+                                    ['text' => 'Добавить еще интересы', 'callback_data' => 'pushInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Вернуться назад', 'callback_data' => 'myInterests']
+                                ],
+                                [
+                                    ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                                ]
+                            ]
+                        ]
+                    ];
+                    
                 }
             } 
         }
@@ -7768,13 +10071,13 @@ if (isset($data['callback_query'])) {
         $ints = mysqli_fetch_array($intsCheck);
 
         $interestsCheck = mysqli_query($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5` FROM `Interests` WHERE userID = " . $user . " ");
-        $interests = mysqli_fetch_row($interestsCheck);
+        $interests = mysqli_fetch_array($interestsCheck);
 
         $skillsCheck = mysqli_query($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5` FROM `Skills` WHERE userID = " . $user . " ");
-        $skills = mysqli_fetch_row($skillsCheck);
+        $skills = mysqli_fetch_array($skillsCheck);
 
         $needsCheck = mysqli_query($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5` FROM `Needs` WHERE userID = " . $user . " ");
-        $needs = mysqli_fetch_row($needsCheck);
+        $needs = mysqli_fetch_array($needsCheck);
 
         $needToComplete = "";
 
@@ -7835,7 +10138,7 @@ if (isset($data['callback_query'])) {
 
         // Если в профиле хоть что-то не заполнено, тогда даем человеку возможность видеть только новых людей и выводим сообщение с кнопкой ведущей в профиль
         if (empty($needs) or empty($ints['name']) or empty($ints['surname']) or empty($interests) or empty($skills) or empty($ints['sex']) or empty($ints['userAge'])) {
-            $method = 'editMessageText';
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Мы запомнили ваш поиск и когда будут появляться люди с таким интересом, мы вас оповестим\nЕсли вы хотите искать людей самостоятельно, тогда вам нужно заполнить еще: " . $needToComplete,
                 'reply_markup' => [
@@ -7863,7 +10166,9 @@ if (isset($data['callback_query'])) {
             foreach ($skillCheck as $key => $value) {
                 mysqli_fetch_array($value);
                 foreach ($value as $key => $value) {
-                    if ($value != $user) {
+                    $userTable = mysqli_query ($con, "SELECT isPrivate FROM MainInfo WHERE userID='".$value."' ");
+                    $userData = mysqli_fetch_array($userTable);
+                    if ($value != $user && $userData['isPrivate'] == 0) {
                         if ($userNames == "") {
                             $userNames = $value;
                             $counter += 1;
@@ -7911,20 +10216,180 @@ if (isset($data['callback_query'])) {
                 $ids = explode(',', $userNames);
 
                 // Выводим данные первого человека
-                $profCheck = mysqli_query ($con, "SELECT `name`, `userAge`, `surname`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='" . $ids[0] . "' ");
+                $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userPhoto`, `tgUserName`, `userAge` FROM `MainInfo` WHERE userID='".$ids[0]."' ");
+                $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$ids[0]."' ");
+                $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$ids[0]."' ");
+                $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$ids[0]."' ");
+                $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$ids[0]."' ");
+
                 $prof = mysqli_fetch_array($profCheck);
+                $skill = mysqli_fetch_row($skillsCheck);
+                $need = mysqli_fetch_row($needsCheck);
+                $int = mysqli_fetch_row($intsCheck);
+                $socials = mysqli_fetch_array($socialCheck);
+
+                $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
 
                 // Если кол-во найденных профилей = 1
                 if ($counter == 1) {
-                    if (empty($prof['userPhoto'])) {
+                    if ($prof['userPhoto'] == "") {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
-                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]  
+                                        ['text' => 'Связаться с человеком', 'url' => 'tg://user?id='.$ids[0]]
                                     ],
                                     [
                                         ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
@@ -7939,8 +10404,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -7967,8 +10432,8 @@ if (isset($data['callback_query'])) {
                     if (empty($prof['userPhoto'])) {
                         $method = 'sendMessage';
                         $send_data = [
-                            'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'reply_markup' => [
                                 'inline_keyboard' => [
                                     [
@@ -7990,8 +10455,8 @@ if (isset($data['callback_query'])) {
                     }else{
                         $response = [
                             'chat_id' => $user,
-                            'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *1*" . " _из_ " . "*" . $counter . "*",
-                            "parse_mode" => "Markdown",
+                            'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>1</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                            "parse_mode" => "html",
                             'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                             'reply_markup'=>json_encode([
                                 'inline_keyboard'=>[
@@ -8055,16 +10520,176 @@ if (isset($data['callback_query'])) {
 
         // Подключаемся к БД и берем данные новой id
         $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$id."' ");
-        $prof = mysqli_fetch_array($profCheck);
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$id."' ");
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$id."' ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$id."' ");
+        $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$id."' ");
 
+        $prof = mysqli_fetch_array($profCheck);
+        $skill = mysqli_fetch_row($skillsCheck);
+        $need = mysqli_fetch_row($needsCheck);
+        $int = mysqli_fetch_row($intsCheck);
+        $socials = mysqli_fetch_array($socialCheck);
+
+        $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
+        
         // Если это первый профиль в списке, то не даем возможности листать назад
         if ($num == 1) {
             // Проверяем наличие фото в профиле
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -8086,8 +10711,8 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
@@ -8118,8 +10743,8 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -8142,8 +10767,8 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
@@ -8206,7 +10831,167 @@ if (isset($data['callback_query'])) {
 
         // Подключаемся к БД и берем данные новой id
         $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto`, `tgUserName` FROM `MainInfo` WHERE userID='".$id."' ");
+        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$id."' ");
+        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$id."' ");
+        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$id."' ");
+        $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$id."' ");
+
         $prof = mysqli_fetch_array($profCheck);
+        $skill = mysqli_fetch_row($skillsCheck);
+        $need = mysqli_fetch_row($needsCheck);
+        $int = mysqli_fetch_row($intsCheck);
+        $socials = mysqli_fetch_array($socialCheck);
+
+        $msgText1 = "";
+                $msgText2 = "";
+                $msgText3 = "";
+
+                if (!empty($skill[0]) or !empty($skill[1]) or !empty($skill[2]) or !empty($skill[3]) or !empty($skill[4]) or !empty($skill[5])) {
+                    $msgText1 = "\n🧑‍💻 <i>Навыки:</i> \n";
+                        // Выводим скиллы в правильном виде
+                    foreach ($skill as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                if (!empty($need[0]) or !empty($need[1]) or !empty($need[2]) or !empty($need[3]) or !empty($need[4]) or !empty($need[5])) {
+                    $msgText2 = "\n📝 <i>Ценности:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($need as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }    
+                
+                if (!empty($int[0]) or !empty($int[1]) or !empty($int[2]) or !empty($int[3]) or !empty($int[4]) or !empty($int[5])) {
+                    $msgText3 = "\n🚲 <i>Интересы:</i> \n";
+                        // Выводим ценности в правильном виде
+                    foreach ($int as $key => $value) {
+                        if ($key == 0 and !empty($value)) {
+                            $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 1 and !empty($value)) {
+                            $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 2 and !empty($value)) {
+                            $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 3 and !empty($value)) {
+                            $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 4 and !empty($value)) {
+                            $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                        }
+                        if ($key == 5 and !empty($value)) {
+                            $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                        }
+                    }
+                }
+
+                $soc = "";
+
+                if (!empty($prof['userAge'])) {
+                    $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
+                }
+
+                if (!empty($socials['inst'])) {
+                    $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $inst;
+                    }else{
+                        $soc .= ", ".$inst;
+                    }
+                }else{
+                    $inst = "";
+                }
+
+                if (!empty($socials['tiktok'])) {
+                    $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $tiktok;
+                    }else{
+                        $soc .= ", ".$tiktok;
+                    }
+                }else{
+                    $tiktok = "";
+                }
+
+                if (!empty($socials['facebook'])) {
+                    $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $facebook;
+                    }else{
+                        $soc .= ", ".$facebook;
+                    }
+                }else{
+                    $facebook = "";
+                }
+
+                if (!empty($socials['viber'])) {
+                    $viber = "<b>Viber - ".$socials['viber']."</b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $viber;
+                    }else{
+                        $soc .= ", ".$viber;
+                    }
+                }else{
+                    $viber = "";
+                }
+
+                if (!empty($socials['whatsapp'])) {
+                    $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $whatsapp;
+                    }else{
+                        $soc .= ", ".$whatsapp;
+                    }
+                }else{
+                    $whatsapp = "";
+                }
+
+                if (!empty($socials['anotherSocials'])) {
+                    $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                    if ($soc == "") {
+                        $soc = "\n" . $anotherSocials;
+                    }else{
+                        $soc .= ", ".$anotherSocials;
+                    }
+                }else{
+                    $anotherSocials = "";
+                }
 
         // Если это последний профиль в списке, то не даем возможности листать дальше
         if ($num == $counter) {
@@ -8214,8 +10999,8 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -8237,8 +11022,8 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
@@ -8269,8 +11054,8 @@ if (isset($data['callback_query'])) {
             if (empty($prof['userPhoto'])) {
                 $method = 'sendMessage';
                 $send_data = [
-                    'text' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'text' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
@@ -8293,8 +11078,8 @@ if (isset($data['callback_query'])) {
             }else{
                 $response = [
                     'chat_id' => $user,
-                    'caption' => "_Имя и Фамилия:_ ".$prof['name']." ".$prof['surname']."\n\n_Возраст:_ ".$prof['userAge']."\n\n🔎 _Профиль_ *" . $num . "*" . " _из_ " . "*" . $counter . "*",
-                    "parse_mode" => "Markdown",
+                    'caption' => "<b>".$prof['name']." ".$prof['surname']."</b> ".$age.$msgText1.$msgText2.$msgText3.$soc."\n\n🔎 <i>Профиль</i> <b>". $num ."</b>" . " <i>из</i> " . "<b>" . $counter . "</b>",
+                    "parse_mode" => "html",
                     'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
@@ -8340,7 +11125,12 @@ if (isset($data['callback_query'])) {
         $msgArray = "";
 
         if (empty($needs)) {
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nВыберите 5 ценностей начиная с самой важной:",
                 'reply_markup' => [
@@ -8421,7 +11211,12 @@ if (isset($data['callback_query'])) {
                     $msgArray .= "\u{0035}\u{FE0F}\u{20E3}" . " - " . trim($value) . "\n";
                 }  
             }
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => "Просмотрите все ценности и найдите самую важную для вас!\n\nСейчас твой список выглядит так:\n" . $msgArray . "\nВыберите 5 ценностей начиная с самой важной:",
                 'reply_markup' => [
@@ -8485,159 +11280,6 @@ if (isset($data['callback_query'])) {
             sendTelegram($method, $send_data);   
         }
         return;
-    }
-
-    else if (strpos($data['callback_query']['data'], 'tni') !== false) {
-        // Поиск в БД такого навыка
-        $user = $func['from']['id'];
-        $intsCheck = mysqli_query ($con, "SELECT `interest1`,`interest2`,`interest3`,`interest4`,`interest5` FROM `Interests` WHERE userID = ".$user." ");
-        $ints = mysqli_fetch_row($intsCheck);
-
-        // Удаляем слово int из профессии
-        $word = $data['callback_query']['data'];
-        $int = preg_replace("/tni/i", "", $word);
-
-        // Узнаем сколько интересов добавил человек
-        $a = count($ints) + 1;
-
-        $msgArray = "";
-        $str = "";
-
-        foreach ($ints as $key => $value) {
-            if ($str = "") {
-                $str .= $value;
-            }else{
-                $str .= "," . $value;
-            }
-        }
-
-        // Если такое хобби у человека уже есть
-        if ($ints[0] == trim($int) or $ints[1] == trim($int) or $ints[2] == trim($int) or $ints[3] == trim($int) or $ints[4] == trim($int)) {
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => 'Упс! У вас уже есть ' . trim($int) . " в списке интересов\n\nСейчас список ваших интересов выглядит так: " . $str,
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Выбрать другой интерес', 'callback_data' => '1chFirst']
-                        ]
-                    ]
-                ]
-            ];
-            $send_data['chat_id'] = $func['message']['chat']['id'];
-            $send_data['message_id'] = $func['message']['message_id'];
-            sendTelegram($method, $send_data); 
-        }else{
-            // Если это будет первый интерес в профиле
-            if (empty($ints[0])) {
-                // Пушим новый интерес в БД
-                mysqli_query ($con, "UPDATE `Interests` SET interest1 = '".trim($int)."' WHERE userID = ".$user." ");
-
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nСейчас у вас указано:\n" . "\u{0031}\u{FE0F}\u{20E3}" . " - " . trim($int) . "\n\nВыбери категорию:",
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
-                            ],
-                            [
-                                ['text' => 'Развелчения 🔻', 'callback_data' => '1 Развлечения']
-                            ],
-                            [
-                                ['text' => 'Бизнес 🔻', 'callback_data' => '1 Бизнес']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
-                            ]
-                        ]
-                    ]
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-                
-                return;
-            }
-            // Если больше 1 но меньше 5
-            if ($a <= 4) {
-                if (empty($ints[1])) {
-                    // Пушим новый интерес в БД
-                    mysqli_query ($con, "UPDATE `Interests` SET interest2 = '".trim($int)."' WHERE userID = ".$user." ");
-                }else if (empty($ints[2])) {
-                    // Пушим новый интерес в БД
-                    mysqli_query ($con, "UPDATE `Interests` SET interest3 = '".trim($int)."' WHERE userID = ".$user." ");
-                }else{
-                    // Пушим новый интерес в БД
-                    mysqli_query ($con, "UPDATE `Interests` SET interest4 = '".trim($int)."' WHERE userID = ".$user." ");
-                }
-
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Укажите 5 своих интересов, начиная с самого важного\n\nСейчас у вас указано:\n" . $str . "\n\nВыбери категорию:",
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Спорт / Активный отдых 🔻', 'callback_data' => '1 Спорт']
-                            ],
-                            [
-                                ['text' => 'Развелчения 🔻', 'callback_data' => '1 Развлечения']
-                            ],
-                            [
-                                ['text' => 'Бизнес 🔻', 'callback_data' => '1 Бизнес']
-                            ],
-                            [
-                                ['text' => '👈 Вернуться к задаче поиска', 'callback_data' => 'FirsTmenu']
-                            ]
-                        ]
-                    ]
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-            }
-            // Если 5 интерес
-            if ($a == 5){
-                // Пушим новый интерес в БД
-                mysqli_query ($con, "UPDATE `Interests` SET interest5 = '".trim($int)."' WHERE userID = ".$user." ");
-
-                // Пушим, что дали награду
-                mysqli_query ($con, "UPDATE `userRewards` SET InterestsReward = 1 WHERE userID = ".$user." ");
-
-                // Получаем кол-во монет пользователя
-                $selectCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
-                $coins = mysqli_fetch_array($selectCoins);
-
-                // Плюсуем к монетам награду
-                $coins = $coins['coins'] + 100;
-
-                // Выдаем монеты
-                mysqli_query ($con, "UPDATE `MainInfo` SET coins = '".$coins."' WHERE userID = ".$user." ");
-
-                $method = 'editMessageText';
-                $send_data = [
-                    'text' => "Вы получили 100 монет за добавление 5 интересов. Узнать кол-во монет и как их получить, вы можете нажав на кнопку 'Монеты' в главном меню",
-                ];
-                $send_data['chat_id'] = $func['message']['chat']['id'];
-                $send_data['message_id'] = $func['message']['message_id'];
-                sendTelegram($method, $send_data);
-
-                // Выводим человеку сообщение об успешности операции и даем возможность добавить еще интересы
-                $method = 'sendMessage';
-                $send_data = [
-                    'text' => 'Отлично! Теперь мне нужно узнать ваше местоположение, чтоб добавить вас в чат для общения',
-                    'reply_markup' => [
-                        resize_keyboard =>true,
-                        one_time_keyboard => true,
-                        'keyboard' => [
-                            [
-                                ['text' => 'Поделиться местоположением', request_location => true]
-                            ]
-                        ]
-                    ]
-                ];
-            }
-        }
     }
     // Вот тут уже просто работа с кнопками меню
     else{
@@ -8815,39 +11457,6 @@ if (isset($data['callback_query'])) {
                         [
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu'],
                             ['text' => '👈 Вернуться к моим соцсетям', 'callback_data' => 'mySocial']
-                        ]
-                    ]
-                ]
-            ];
-            break;
-
-        case 'myCoins':
-            // Удаляем старое сообщение
-            $user = $func['from']['id'];
-            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
-            $send_data['chat_id'] = $user;
-            sendTelegram('deleteMessage', $send_data);
-
-            $userCoins = mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' ");
-            $coins = mysqli_fetch_array($userCoins);
-
-            if ($coins['coins'] == "") {
-                $coins = 0;
-            }else{
-                $coins = $coins['coins'];
-            }
-
-            $method = 'sendMessage';
-            $send_data = [
-                'text' => "💰 *Монеты:*\n\n_У вас на счету:_ " . "*" . $coins . "*" . ' монет',
-                'parse_mode' => "Markdown",
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Как заработать монеты?', 'callback_data' => 'howToMakeCoins']
-                        ],
-                        [
-                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
                     ]
                 ]
@@ -9168,24 +11777,6 @@ if (isset($data['callback_query'])) {
             ];
             break;
 
-        case 'feedback':
-            // Записываем, что человек находится в меню ФИДБЭК
-            $user = $func['from']['id'];
-            mysqli_query($con, "UPDATE `TrackingMenu` SET whichMenu = 'ФИДБЭК', mesToChange = '".$data['callback_query']['message']['message_id']."' WHERE userID = '".$user."' ");
-            $method = 'editMessageText';
-            $send_data = [
-                'text' => "🗣️ *Сообщить об идее/ошибке*\n\n_Напиши мне о своей идее или о проблеме с которой ты столкнулся._",
-                "parse_mode" => "Markdown",
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
-                        ]
-                    ]
-                ]
-            ];
-            break;
-
         case 'faq':
             // Удаляем старое сообщение
             $user = $func['from']['id'];
@@ -9273,7 +11864,7 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
@@ -9285,9 +11876,91 @@ if (isset($data['callback_query'])) {
             $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
             $needs = mysqli_fetch_row($needsCheck);
 
+            $needsArrTo6 = array();
             $msgText2 = "";
             $btnsArray = array();
-            array_push($btnsArray, array(array('text' => 'Добавить ценности', 'callback_data' => 'pushNeeds')));
+            array_push($btnsArray, array(array('text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds')));
+            // Выводим ценности в правильном виде
+            foreach ($needs as $key => $value) {
+                if ($key == 0 and !empty($value)) {
+                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 1 and !empty($value)) {
+                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 2 and !empty($value)) {
+                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 3 and !empty($value)) {
+                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 4 and !empty($value)) {
+                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
+                }
+                if ($key == 5 and !empty($value)) {
+                    $arr = explode(",",$value);
+                    foreach($arr as $key => $value1){
+                        $msgText2 .= trim($value1) . "\n";
+                        array_push($needsArrTo6, $value1);
+                    }
+                }
+            }
+
+            foreach ($needs as $key => $value) {
+                if (!empty($value) and $key < 5) {
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value."1134")));
+                }else {
+                    if(!empty($value)){
+                        foreach($needsArrTo6 as $key => $value1){
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)."1134")));
+                        }
+                    }
+                }
+            }
+            
+            // Удаляем сообщение с профилем
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            if (empty($msgText2)) {
+                $method = 'sendMessage';
+                $send_data = [
+                    'text' => "📝 *Мои ценности*\n\n_Сейчас у вас ничего не указано_",
+                        "parse_mode" => "Markdown",
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => '➕ Добавить ценности', 'callback_data' => 'pushNeeds']  
+                            ],
+                            [
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ]
+                        ]
+                    ]
+                ];
+            }else{
+                array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
+
+                $method = 'sendMessage';
+                $send_data = [
+                    'text' => "📝 *Мои ценности*\n\n_Сейчас у вас указано:_ \n".$msgText2,
+                        "parse_mode" => "Markdown",
+                    'reply_markup' => [
+                        'inline_keyboard' => $btnsArray
+                    ]
+                ];
+            }
+
+            
+        break;
+
+        case 'pushNeeds':
+            $user = $func['from']['id']; 
+            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
+            $needs = mysqli_fetch_row($needsCheck);
+
+            $msgText2 = "";
             // Выводим ценности в правильном виде
             foreach ($needs as $key => $value) {
                 if ($key == 0 and !empty($value)) {
@@ -9310,55 +11983,7 @@ if (isset($data['callback_query'])) {
                 }
             }
 
-            foreach ($needs as $key => $value) {
-                if (!empty($value)) {
-                    array_push($btnsArray, array(array('text' => 'Удалить '.$value, 'callback_data' => $value."1134")));
-                }
-            }
-            
-            // Удаляем сообщение с профилем
-            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
-            $send_data['chat_id'] = $user;
-            sendTelegram('deleteMessage', $send_data);
-
-            if (empty($needs)) {
-                $method = 'sendMessage';
-                $send_data = [
-                    'text' => "📝 *Мои ценности*",
-                        "parse_mode" => "Markdown",
-                    'reply_markup' => [
-                        'inline_keyboard' => [
-                            [
-                                ['text' => 'Добавить ценности', 'callback_data' => 'pushNeeds']  
-                            ],
-                            [
-                                ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
-                            ]
-                        ]
-                    ]
-                ];
-            }else{
-                array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
-
-                $method = 'sendMessage';
-                $send_data = [
-                    'text' => "📝 *Мои ценности*\n\n_Сейчас у вас указано:_ \n".$msgText2,
-                        "parse_mode" => "Markdown",
-                    'reply_markup' => [
-                        'inline_keyboard' => $btnsArray
-                    ]
-                ];
-            }
-
-            
-        break;
-
-        case 'pushNeeds':
-            $user = $func['from']['id']; 
-            $needsCheck = mysqli_query ($con, "SELECT `n1`,`n2`,`n3`,`n4`,`n5`,`n6` FROM `Needs` WHERE userID='".$user."' ");
-            $needs = mysqli_fetch_row($needsCheck);
-
-            if (empty($needs)) {
+            if (empty($msgText2)) {
                 $method = 'editMessageText';
                 $send_data = [
                     'text' => "📝 *Мои ценности*\n\n_Просмотри все ценности и найди самую важную для тебя!\nВыбери ценности начиная с самой важной:_",
@@ -9423,28 +12048,6 @@ if (isset($data['callback_query'])) {
                 $send_data['message_id'] = $func['message']['message_id'];
                 sendTelegram($method, $send_data);
             }else{
-                $msgText2 = "";
-                // Выводим ценности в правильном виде
-                foreach ($needs as $key => $value) {
-                    if ($key == 0 and !empty($value)) {
-                        $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                    }
-                    if ($key == 1 and !empty($value)) {
-                        $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                    }
-                    if ($key == 2 and !empty($value)) {
-                        $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                    }
-                    if ($key == 3 and !empty($value)) {
-                        $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                    }
-                    if ($key == 4 and !empty($value)) {
-                        $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
-                    }
-                    if ($key == 5 and !empty($value)) {
-                        $msgText2 .= trim($value) . "\n";
-                    }
-                }
 
                 $method = 'editMessageText';
                 $send_data = [
@@ -9556,7 +12159,7 @@ if (isset($data['callback_query'])) {
                     'reply_markup' => [
                         'inline_keyboard' => [
                             [
-                                ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                             ]
                         ]
                     ]
@@ -9600,7 +12203,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Добавить качества', 'callback_data' => 'pushNeeds']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
@@ -9612,6 +12215,7 @@ if (isset($data['callback_query'])) {
             $interestsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
             $interests = mysqli_fetch_row($interestsCheck);
 
+            $interestsArrTo6 = array();
             $msgText3 = "";
             $btnsArray = array();
             array_push($btnsArray, array(array('text' => '➕ Добавить интересы', 'callback_data' => 'pushInterests')));
@@ -9633,15 +12237,26 @@ if (isset($data['callback_query'])) {
                     $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3}" . trim($value) . "\n";
                 }
                 if ($key == 5 and !empty($value)) {
-                    $msgText3 .= trim($value) . "\n";
+                    $arr = explode("," , $value);
+                    foreach ($arr as $key => $value1) {
+                        $msgText3 .= trim($value1) . "\n";
+                        array_push($interestsArrTo6, $value1);
+                    }
                 }
             }
 
             foreach ($interests as $key => $value) {
                 if (!empty($value) and $key < 5) {
-                    array_push($btnsArray, array(array('text' => '❌ Удалить '.$value, 'callback_data' => $value." 1135")));
+                    array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1135")));
+                }else {
+                    if(!empty($value)){
+                        foreach ($interestsArrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1135")));
+                        }
+                    }
                 }
             }
+
 
             // Удаляем сообщение с меню
             $send_data['message_id'] = $data['callback_query']['message']['message_id'];
@@ -9658,13 +12273,13 @@ if (isset($data['callback_query'])) {
                                 ['text' => 'Добавить интересы', 'callback_data' => 'pushInterests']  
                             ],
                             [
-                                ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                             ]
                         ]
                     ]
                 ];
             }else {
-                array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
+                array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "🚲 Мои интересы:\n\n" . $msgText3,
@@ -9718,7 +12333,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Бизнес 🔻', 'callback_data' => 'Бизнес']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться в "Мои интересы"', 'callback_data' => 'myInterests'],
+                            ['text' => '👈 Вернуться в "Мои интересы"', 'callback_data' => 'myInterests'],
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
 
@@ -9791,7 +12406,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Следующая страница 👉', 'callback_data' => 'Развлечения2']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться назад', 'callback_data' => 'pushInterests'],
+                            ['text' => '👈 Вернуться назад', 'callback_data' => 'pushInterests'],
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
 
@@ -9858,7 +12473,7 @@ if (isset($data['callback_query'])) {
                             ['text' => '👈 Прошлая страница', 'callback_data' => 'Развлечения']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться назад', 'callback_data' => 'pushInterests'],
+                            ['text' => '👈 Вернуться назад', 'callback_data' => 'pushInterests'],
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
 
@@ -9925,7 +12540,7 @@ if (isset($data['callback_query'])) {
                             ['text' => '🆘 Не нашел свой интерес 🆘', 'callback_data' => 'НеНашелИнтерес']  
                         ],*/
                         [
-                            ['text' => '👈 Вурнуться назад', 'callback_data' => 'pushInterests'],
+                            ['text' => '👈 Вернуться назад', 'callback_data' => 'pushInterests'],
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
 
@@ -10025,7 +12640,7 @@ if (isset($data['callback_query'])) {
                             ['text' => '🆘 Не нашел свой интерес 🆘', 'callback_data' => 'НеНашелИнтерес']  
                         ],*/
                         [
-                            ['text' => '👈 Вурнуться назад', 'callback_data' => 'pushInterests'],
+                            ['text' => '👈 Вернуться назад', 'callback_data' => 'pushInterests'],
                             ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
                         ]
 
@@ -10306,51 +12921,12 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Добавить интересы', 'callback_data' => 'pushInterests']  
                         ],
                         [
-                            ['text' => '👈 Вурнуться назад', 'callback_data' => 'profile']  
+                            ['text' => '👈 Вернуться назад', 'callback_data' => 'profile']  
                         ]
                     ]
                 ]
             ];
             break;*/
-
-        case 'myNameAge':
-            $user = $func['from']['id']; 
-            $nameCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `sex` FROM `MainInfo` WHERE userID='".$user."' ");
-            $name = mysqli_fetch_array($nameCheck);
-
-            // Удаляем сообщение с профилем
-            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
-            $send_data['chat_id'] = $user;
-            sendTelegram('deleteMessage', $send_data);
-
-            $method = 'sendMessage';
-            $send_data = [
-                'text' => "🤴 *Личные данные*\n\n_Имя:_ *" . $name['name']."*\n_Фамилия:_ *".$name['surname'] . "*\n_Возраст:_ *" . $name['userAge'] . "*\n_Пол:_ *" . $name['sex'] . "*",
-                "parse_mode" => 'markdown',
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [
-                            ['text' => 'Изменить имя', 'callback_data' => 'changeName']
-                        ],
-                        [
-                            ['text' => 'Изменить фамилию', 'callback_data' => 'changeSurname']
-                        ],
-                        [
-                            ['text' => 'Изменить возраст', 'callback_data' => 'changeAge']
-                        ],
-                        [
-                            ['text' => 'Указать пол', 'callback_data' => 'changeSex']
-                        ],
-                        [
-                            ['text' => 'Добавить фото', 'callback_data' => 'plusPhoto']
-                        ],
-                        [
-                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
-                        ]
-                    ]
-                ]
-            ];
-            break;
 
         case 'Женский Sex':
             // Удаляем старое сообщение
@@ -10574,7 +13150,8 @@ if (isset($data['callback_query'])) {
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Отправь мне свою фамилию, а после нажми кнопку 'Сохранить'.\n! Учитываться будет только последнее отправленное сообщение !\nПример: Тарас\n\nСейчас у вас указано: " . $row['surname'] ,
+                'text' => "*Отправь мне свою фамилию, а после нажми кнопку 'Сохранить'.*\n\n_! Учитываться будет только последнее отправленное сообщение !\nПример:_ *Шевченко*\n\n_Сейчас у вас указано:_ *" . $row['surname'] ."*" ,
+                "parse_mode" => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10708,7 +13285,8 @@ if (isset($data['callback_query'])) {
 
             $method = 'editMessageText';
             $send_data = [
-                'text' => "Отправь мне свое Имя и Фамилию, а после нажми кнопку 'Сохранить'.\n! Учитываться будет только последнее отправленное сообщение !\nПример: Тарас\n\nСейчас у вас указано: " . $row['name'] ,
+                'text' => "*Отправь мне свою имя, а после нажми кнопку 'Сохранить'.*\n\n_! Учитываться будет только последнее отправленное сообщение !\nПример:_ *Тарас*\n\n_Сейчас у вас указано:_ *" . $row['name'] ."*" ,
+                'parse_mode' => 'markdown',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
@@ -10992,8 +13570,8 @@ if (isset($data['callback_query'])) {
                 }
                 if ($key == 5 and !empty($value)) {
                     $skills6 = explode("," , $value);
-                    foreach ($skills6 as $key => $value) {
-                        $skill6 = explode(")", $value);
+                    foreach ($skills6 as $key => $value1) {
+                        $skill6 = explode(")", $value1);
                         $msgText3 .= trim($skill6[1]) . "\n";
                         array_push($arrTo6, $skill6[1]);
                     }
@@ -11005,8 +13583,8 @@ if (isset($data['callback_query'])) {
                     array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value)." 1133")));
                 }else{
                     if (!empty($value)) {
-                        foreach ($arrTo6 as $key => $value) {
-                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value), 'callback_data' => trim($value1)." 1133")));
+                        foreach ($arrTo6 as $key => $value1) {
+                            array_push($btnsArray, array(array('text' => '❌ Удалить '.trim($value1), 'callback_data' => trim($value1)." 1133")));
                         }
                     }
                 }
@@ -11022,13 +13600,13 @@ if (isset($data['callback_query'])) {
                                 ['text' => 'Добавить навыки', 'callback_data' => 'choiceSkills']  
                             ],
                             [
-                                ['text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile']  
+                                ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']  
                             ]
                         ]
                     ]
                 ];
             }else {
-                array_push($btnsArray, array(array('text' => '👈 Вурнуться в "Мой профиль"', 'callback_data' => 'profile')));
+                array_push($btnsArray, array(array('text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile')));
                 $method = 'sendMessage';
                 $send_data = [
                     'text' => "🧑‍💻 Мои навыки\n\n" . $msgText3,
@@ -11059,40 +13637,31 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер add']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов add']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист add']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов add']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор add']
+                            ['text' => 'Back end', 'callback_data' => 'Back end add']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик add']
+                            ['text' => 'Front end', 'callback_data' => 'Front end add']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C add']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД add']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик add']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист add']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер add']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер add']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог add']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер add']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик add']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта add']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки add']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа add']
@@ -11101,10 +13670,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог add']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки add']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки add']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД add']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки add']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'choiceSkills']
@@ -11194,7 +13763,13 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея add']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер add']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров add']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер add']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер add']
@@ -11416,9 +13991,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара add']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик add']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик add']
                         ],
                         [
@@ -11483,6 +14055,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор add']
+                        ],
+                        [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог add']
                         ],
                         [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор add']
@@ -12244,6 +14819,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий add']
                         ],
                         [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров add']
+                        ],
+                        [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора add']
                         ],
                         [
@@ -12269,6 +14847,69 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер add']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик add']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'choiceSkills']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'crewingSkill':
+            $user = $func['from']['id']; 
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист add']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок add']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик add']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан add']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана add']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос add']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман add']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман add']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик add']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет add']
                         ],
                         [
                             ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик add']
@@ -12747,40 +15388,31 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер  ser2ch']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов ser2ch']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист ser2ch']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов ser2ch']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор ser2ch']
+                            ['text' => 'Back end', 'callback_data' => 'Back end ser2ch']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик ser2ch']
+                            ['text' => 'Front end', 'callback_data' => 'Front end ser2ch']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C ser2ch']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД ser2ch']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик ser2ch']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист ser2ch']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер ser2ch']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер ser2ch']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог ser2ch']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер ser2ch']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик ser2ch']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта ser2ch']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки ser2ch']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа ser2ch']
@@ -12789,10 +15421,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог ser2ch']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки ser2ch']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки ser2ch']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД ser2ch']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки ser2ch']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'choiceSkills']
@@ -12892,7 +15524,13 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея ser2ch']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер ser2ch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров ser2ch']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер ser2ch']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер ser2ch']
@@ -13129,9 +15767,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара ser2ch']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик ser2ch']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик ser2ch']
                         ],
                         [
@@ -13201,6 +15836,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор ser2ch']
+                        ],
+                        [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог ser2ch']
                         ],
                         [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор ser2ch']
@@ -14022,6 +16660,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий ser2ch']
                         ],
                         [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров ser2ch']
+                        ],
+                        [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора ser2ch']
                         ],
                         [
@@ -14047,6 +16688,74 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер ser2ch']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик ser2ch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'choiceSkills']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться в "Мой профиль"', 'callback_data' => 'profile']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'crewingSkill ser1ch':
+            $user = $func['from']['id']; 
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`,`s2`,`s3`,`s4`,`s5`,`s6` FROM `Skills` WHERE userID='".$user."' ");
+            $skills = mysqli_fetch_row($skillsCheck);
+            $msg = "";
+            foreach ($skills as $key => $value) {
+                if (!empty($value)) {
+                    if ($msg = "") {
+                        $msg .= $value;
+                    }else{
+                        $msg .= ", ".$value;
+                    }
+                }
+            }
+            // Удаляем старое сообщение
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => "Сейчас у вас указано:" . $msg . "\n\nВыберите навык:",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист ser2ch']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок ser2ch']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик ser2ch']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан ser2ch']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана ser2ch']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос ser2ch']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман ser2ch']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман ser2ch']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик ser2ch']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет ser2ch']
                         ],
                         [
                             ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик ser2ch']
@@ -14549,40 +17258,31 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер  s2erch']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов s2erch']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист s2erch']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов s2erch']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор s2erch']
+                            ['text' => 'Back end', 'callback_data' => 'Back end s2erch']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик s2erch']
+                            ['text' => 'Front end', 'callback_data' => 'Front end s2erch']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C s2erch']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД s2erch']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик s2erch']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист s2erch']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер s2erch']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер s2erch']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог s2erch']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер s2erch']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик s2erch']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта s2erch']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки s2erch']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа s2erch']
@@ -14591,10 +17291,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог s2erch']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки s2erch']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки s2erch']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД s2erch']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки s2erch']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'learnFinder']
@@ -14666,7 +17366,13 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея s2erch']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер s2erch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров s2erch']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер s2erch']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер s2erch']
@@ -14861,9 +17567,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара s2erch']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик s2erch']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик s2erch']
                         ],
                         [
@@ -14919,6 +17622,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор s2erch']
+                        ],
+                        [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог s2erch']
                         ],
                         [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор s2erch']
@@ -15572,6 +18278,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий s2erch']
                         ],
                         [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров s2erch']
+                        ],
+                        [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора s2erch']
                         ],
                         [
@@ -15597,6 +18306,60 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер s2erch']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик s2erch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'learnFinder']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'crewingSkill s1erch':
+            // Удаляем старое сообщение
+            $user = $func['from']['id'];
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => "💪 *С кем вместе обучаться*\n\n_Выберите навык:_",
+                "parse_mode" => "Markdown",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист s2erch']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок s2erch']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик s2erch']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан s2erch']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана s2erch']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос s2erch']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман s2erch']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман s2erch']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик s2erch']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет s2erch']
                         ],
                         [
                             ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик s2erch']
@@ -15985,46 +18748,42 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ITSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер firstch']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов firstch']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист firstch']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов firstch']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор firstch']
+                            ['text' => 'Back end', 'callback_data' => 'Back end firstch']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик firstch']
+                            ['text' => 'Front end', 'callback_data' => 'Front end firstch']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C firstch']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД firstch']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик firstch']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист firstch']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер firstch']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер firstch']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог firstch']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер firstch']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик firstch']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта firstch']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки firstch']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа firstch']
@@ -16033,10 +18792,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог firstch']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки firstch']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки firstch']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД firstch']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки firstch']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
@@ -16047,7 +18806,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'administrSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16088,13 +18852,24 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'designSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея firstch']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер firstch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров firstch']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер firstch']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер firstch']
@@ -16138,7 +18913,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'beautySkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16191,7 +18971,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'showbizSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16238,7 +19023,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'logistikaSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16268,9 +19058,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара firstch']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик firstch']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик firstch']
                         ],
                         [
@@ -16285,7 +19072,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'marketingSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16321,6 +19113,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор firstch']
                         ],
                         [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог firstch']
+                        ],
+                        [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор firstch']
                         ],
                         [
@@ -16332,7 +19127,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'medicinaSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16400,7 +19200,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'nedvizhimostSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16432,7 +19237,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'naukaSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16479,7 +19289,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ohranaSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16535,7 +19350,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'prodajiSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16579,7 +19399,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'proizvodstvoSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16632,7 +19457,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'torgovlyaSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16676,7 +19506,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'sekretaringSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16726,7 +19561,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'agrobiznesSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16782,7 +19622,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'izdatelstvoSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16835,7 +19680,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'strahovanieSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16860,8 +19710,65 @@ if (isset($data['callback_query'])) {
             ];
             break;
 
+        case 'crewingSkill first':
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Выбери навык:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист firstch']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок firstch']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик firstch']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан firstch']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана firstch']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос firstch']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман firstch']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман firstch']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик firstch']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет firstch']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик firstch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
         case 'stroitelstvoSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16886,6 +19793,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий firstch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров firstch']
                         ],
                         [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора firstch']
@@ -16926,7 +19836,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'obsluzhivanieSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -16982,7 +19897,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'telecomunikaciiSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17026,7 +19946,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'topmenSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17070,7 +19995,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'avtobizSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17123,7 +20053,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'hrSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17161,7 +20096,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'bankSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17205,7 +20145,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'yuristSkill first':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17252,46 +20197,42 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ITSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер secondch']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов secondch']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист secondch']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов secondch']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор secondch']
+                            ['text' => 'Back end', 'callback_data' => 'Back end secondch']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик secondch']
+                            ['text' => 'Front end', 'callback_data' => 'Front end secondch']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C secondch']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД secondch']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик secondch']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист secondch']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер secondch']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер secondch']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог secondch']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер secondch']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик secondch']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта secondch']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки secondch']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа secondch']
@@ -17300,10 +20241,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог secondch']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки secondch']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки secondch']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД secondch']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки secondch']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
@@ -17314,7 +20255,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'administrSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17355,13 +20301,24 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'designSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея secondch']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер secondch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров secondch']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер secondch']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер secondch']
@@ -17405,7 +20362,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'beautySkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17458,7 +20420,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'showbizSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17505,7 +20472,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'logistikaSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17535,9 +20507,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара secondch']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик secondch']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик secondch']
                         ],
                         [
@@ -17552,7 +20521,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'marketingSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17588,6 +20562,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор secondch']
                         ],
                         [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог secondch']
+                        ],
+                        [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор secondch']
                         ],
                         [
@@ -17599,7 +20576,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'medicinaSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17667,7 +20649,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'nedvizhimostSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17699,7 +20686,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'naukaSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17746,7 +20738,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ohranaSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17802,7 +20799,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'prodajiSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17846,7 +20848,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'proizvodstvoSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17899,7 +20906,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'torgovlyaSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17943,7 +20955,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'sekretaringSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -17993,7 +21010,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'agrobiznesSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18049,7 +21071,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'izdatelstvoSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18102,7 +21129,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'strahovanieSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18127,8 +21159,65 @@ if (isset($data['callback_query'])) {
             ];
             break;
 
+        case 'crewingSkill second':
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Выбери навык:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист secondch']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок secondch']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик secondch']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан secondch']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана secondch']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос secondch']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман secondch']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман secondch']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик secondch']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет secondch']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик secondch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
         case 'stroitelstvoSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18153,6 +21242,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий secondch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров secondch']
                         ],
                         [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора secondch']
@@ -18193,7 +21285,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'obsluzhivanieSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18249,7 +21346,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'telecomunikaciiSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18293,7 +21395,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'topmenSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18337,7 +21444,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'avtobizSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18390,7 +21502,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'hrSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18428,7 +21545,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'bankSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18472,7 +21594,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'yuristSkill second':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18519,46 +21646,42 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ITSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер thirdch']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов thirdch']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист thirdch']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов thirdch']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор thirdch']
+                            ['text' => 'Back end', 'callback_data' => 'Back end thirdch']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик thirdch']
+                            ['text' => 'Front end', 'callback_data' => 'Front end thirdch']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C thirdch']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД thirdch']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик thirdch']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист thirdch']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер thirdch']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер thirdch']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог thirdch']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер thirdch']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик thirdch']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта thirdch']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки thirdch']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа thirdch']
@@ -18567,10 +21690,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог thirdch']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки thirdch']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки thirdch']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор-БД thirdch']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки thirdch']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
@@ -18581,7 +21704,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'administrSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18622,13 +21750,24 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'designSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея thirdch']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер thirdch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров thirdch']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер thirdch']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер thirdch']
@@ -18672,7 +21811,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'beautySkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18725,7 +21869,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'showbizSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18772,7 +21921,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'logistikaSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18802,9 +21956,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара thirdch']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик thirdch']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик thirdch']
                         ],
                         [
@@ -18819,7 +21970,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'marketingSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18855,6 +22011,9 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор thirdch']
                         ],
                         [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог thirdch']
+                        ],
+                        [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор thirdch']
                         ],
                         [
@@ -18866,7 +22025,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'medicinaSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18934,7 +22098,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'nedvizhimostSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -18966,7 +22135,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'naukaSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19013,7 +22187,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'ohranaSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19069,7 +22248,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'prodajiSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19113,7 +22297,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'proizvodstvoSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19166,7 +22355,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'torgovlyaSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19210,7 +22404,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'sekretaringSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19260,7 +22459,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'agrobiznesSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19316,7 +22520,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'izdatelstvoSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19369,7 +22578,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'strahovanieSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19394,8 +22608,65 @@ if (isset($data['callback_query'])) {
             ];
             break;
 
+        case 'crewingSkill third':
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Выбери навык:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист thirdch']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок thirdch']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик thirdch']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан thirdch']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана thirdch']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос thirdch']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман thirdch']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман thirdch']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик thirdch']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет thirdch']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик thirdch']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => '2chFirst']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
         case 'stroitelstvoSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19420,6 +22691,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий thirdch']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров thirdch']
                         ],
                         [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора thirdch']
@@ -19460,7 +22734,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'obsluzhivanieSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19516,7 +22795,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'telecomunikaciiSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19560,7 +22844,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'topmenSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19604,7 +22893,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'avtobizSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19657,7 +22951,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'hrSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19695,7 +22994,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'bankSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19739,7 +23043,12 @@ if (isset($data['callback_query'])) {
             break;
 
         case 'yuristSkill third':
-            $method = 'editMessageText';
+            $user = $func['from']['id']; 
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $method = 'sendMessage';
             $send_data = [
                 'text' => 'Выбери навык:',
                 'reply_markup' => [
@@ -19795,10 +23104,19 @@ if (isset($data['callback_query'])) {
                             ['text' => 'IT, компьютеры, интернет', 'callback_data' => 'ITSkill']
                         ],
                         [
-                            ['text' => 'Администрация, руководство среднего звена', 'callback_data' => 'administrSkill']
+                            ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill']
+                        ],
+                        [
+                            ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill']
                         ],
                         [
                             ['text' => 'Дизайн, творчество', 'callback_data' => 'designSkill']
+                        ],
+                        [
+                            ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill']
+                        ],
+                        [
+                            ['text' => 'Крюинг', 'callback_data' => 'crewingSkill']
                         ],
                         [
                             ['text' => 'Красота, фитнес, спорт', 'callback_data' => 'beautySkill']
@@ -19807,28 +23125,7 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Культура, музыка, шоу-бизнес', 'callback_data' => 'showbizSkill']
                         ],
                         [
-                            ['text' => 'Логистика, склад, ВЭД', 'callback_data' => 'logistikaSkill']
-                        ],
-                        [
-                            ['text' => 'Маркетинг, реклама, PR', 'callback_data' => 'marketingSkill']
-                        ],
-                        [
-                            ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill']
-                        ],
-                        [
-                            ['text' => 'Недвижимость', 'callback_data' => 'nedvizhimostSkill']
-                        ],
-                        [
-                            ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill']
-                        ],
-                        [
-                            ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill']
-                        ],
-                        [
-                            ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill']
-                        ],
-                        [
-                            ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill']
+                            ['text' => 'Управление персоналом и руководство', 'callback_data' => 'administrSkill']
                         ],
                         /*[
                             ['text' => '🆘 Я не нашел свой навык 🆘', 'callback_data' => 'imNotFindMySkill']
@@ -19849,16 +23146,49 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
+                            ['text' => 'Образование, наука', 'callback_data' => 'naukaSkill']
+                        ],
+                        [
+                            ['text' => 'Продажи, закупки', 'callback_data' => 'prodajiSkill']
+                        ],
+                        [
+                            ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill']
+                        ],
+                        [
+                            ['text' => 'Медицина, фармацевтика', 'callback_data' => 'medicinaSkill']
+                        ],
+                        [
+                            ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill']
+                        ],
+                        [
+                            ['text' => 'Охрана, безопасность', 'callback_data' => 'ohranaSkill']
+                        ], 
+                        [
+                            ['text' => 'Рабочие специальности, производство', 'callback_data' => 'proizvodstvoSkill']
+                        ],
+                        [
                             ['text' => 'Розничная торговля', 'callback_data' => 'torgovlyaSkill']
                         ],
                         [
                             ['text' => 'Секретариат, делопроизводство, АХО', 'callback_data' => 'sekretaringSkill']
                         ],
                         [
-                            ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill']
-                        ],
+                            ['text' => '👈 1 страница', 'callback_data' => 'choiceSkills'],
+                            ['text' => '3 страница 👉', 'callback_data' => 'choiceSkills3']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
+        case 'choiceSkills3':
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => 'Выбери категорию:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
                         [
-                            ['text' => 'СМИ, издательство, полиграфия', 'callback_data' => 'izdatelstvoSkill']
+                            ['text' => 'Сельское хозяйство, агробизнес', 'callback_data' => 'agrobiznesSkill']
                         ],
                         [
                             ['text' => 'Страхование', 'callback_data' => 'strahovanieSkill']
@@ -19868,9 +23198,6 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Сфера обслуживания', 'callback_data' => 'obsluzhivanieSkill']
-                        ],
-                        [
-                            ['text' => 'Телекоммуникации и связь', 'callback_data' => 'telecomunikaciiSkill']
                         ],
                         [
                             ['text' => 'Топ-менеджмент, руководство высшего звена', 'callback_data' => 'topmenSkill']
@@ -19891,7 +23218,7 @@ if (isset($data['callback_query'])) {
                             ['text' => '🆘 Я не нашел свой навык 🆘', 'callback_data' => 'imNotFindMySkill']
                         ],*/
                         [
-                            ['text' => '👈 1 страница', 'callback_data' => 'choiceSkills']
+                            ['text' => '👈 2 страница', 'callback_data' => 'choiceSkills2']
                         ]
                     ]
                 ]
@@ -19911,40 +23238,31 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Контент-менеджер', 'callback_data' => 'Контент-менеджер поиск']
+                            ['text' => 'Разработчик чат-ботов', 'callback_data' => 'Разраб чат-ботов поиск']
                         ],
                         [
-                            ['text' => 'SMM-специалист', 'callback_data' => 'SMM-специалист поиск']
+                            ['text' => 'Разработчик сайтов', 'callback_data' => 'Разработчик сайтов поиск']
                         ],
                         [
-                            ['text' => 'Системный администратор', 'callback_data' => 'Системный администратор поиск']
+                            ['text' => 'Back end', 'callback_data' => 'Back end поиск']
                         ],
                         [
-                            ['text' => 'Разработчик', 'callback_data' => 'Разработчик поиск']
+                            ['text' => 'Front end', 'callback_data' => 'Front end поиск']
                         ],
                         [
-                            ['text' => 'Программист 1C', 'callback_data' => 'Программист 1C поиск']
+                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД поиск']
                         ],
                         [
-                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик поиск']
-                        ],
-                        [
-                            ['text' => 'PR-специалист', 'callback_data' => 'PR-специалист поиск']
-                        ],
-                        [
-                            ['text' => 'Сервисный инженер', 'callback_data' => 'Сервисный инженер поиск']
+                            ['text' => 'IT Project-менеджер', 'callback_data' => 'IT Project-менеджер поиск']
                         ],
                         [
                             ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог поиск']
                         ],
                         [
-                            ['text' => 'Project-менеджер', 'callback_data' => 'Project-менеджер поиск']
+                            ['text' => 'Верстальщик', 'callback_data' => 'Верстальщик поиск']
                         ],
                         [
                             ['text' => 'Администратор сайта', 'callback_data' => 'Администратор сайта поиск']
-                        ],
-                        [
-                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки поиск']
                         ],
                         [
                             ['text' => 'Режиссер видеомонтажа', 'callback_data' => 'Режиссер видеомонтажа поиск']
@@ -19953,10 +23271,10 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Интернет-маркетолог', 'callback_data' => 'Интернет-маркетолог поиск']
                         ],
                         [
-                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки поиск']
+                            ['text' => 'Cпециалист службы поддержки', 'callback_data' => 'Cлужба поддержки поиск']
                         ],
                         [
-                            ['text' => 'Администратор баз данных', 'callback_data' => 'Администратор БД поиск']
+                            ['text' => 'Оператор технической поддержки', 'callback_data' => 'Оператор тех-поддержки поиск']
                         ],
                         [
                             ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'skillsFinder']
@@ -20026,7 +23344,13 @@ if (isset($data['callback_query'])) {
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [
-                            ['text' => 'Швея', 'callback_data' => 'Швея поиск']
+                            ['text' => '3D дизайнер', 'callback_data' => '3D дизайнер поиск']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров поиск']
+                        ],
+                        [
+                            ['text' => 'Иллюстратор', 'callback_data' => '3D дизайнер поиск']
                         ],
                         [
                             ['text' => 'Графический дизайнер', 'callback_data' => 'Графический дизайнер поиск']
@@ -20218,9 +23542,6 @@ if (isset($data['callback_query'])) {
                             ['text' => 'Приемщик товара', 'callback_data' => 'Приемщик товара поиск']
                         ],
                         [
-                            ['text' => 'Водитель-грузчик', 'callback_data' => 'Водитель-грузчик поиск']
-                        ],
-                        [
                             ['text' => 'Оператор-упаковщик', 'callback_data' => 'Оператор-упаковщик поиск']
                         ],
                         [
@@ -20275,6 +23596,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Операционный директор', 'callback_data' => 'Операционный директор поиск']
+                        ],
+                        [
+                            ['text' => 'Таргетолог', 'callback_data' => 'Таргетолог поиск']
                         ],
                         [
                             ['text' => 'Арт-директор', 'callback_data' => 'Арт-директор поиск']
@@ -20882,6 +24206,59 @@ if (isset($data['callback_query'])) {
             ];
             break;
 
+        case 'crewingSkill-find':
+            // Удаляем старое сообщение
+            $user = $func['from']['id'];
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+            
+            $method = 'sendMessage';
+            $send_data = [
+                'text' => 'Выбери навык:',
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Моторист', 'callback_data' => 'Моторист поиск']
+                        ],
+                        [
+                            ['text' => 'Кок', 'callback_data' => 'Кок поиск']
+                        ],
+                        [
+                            ['text' => 'Механик', 'callback_data' => 'Механик поиск']
+                        ],
+                        [
+                            ['text' => 'Капитан', 'callback_data' => 'Капитан поиск']
+                        ],
+                        [
+                            ['text' => 'Помощник капитана', 'callback_data' => 'Помощник капитана поиск']
+                        ],
+                        [
+                            ['text' => 'Матрос', 'callback_data' => 'Матрос поиск']
+                        ],
+                        [
+                            ['text' => 'Донкерман', 'callback_data' => 'Донкерман поиск']
+                        ],
+                        [
+                            ['text' => 'Боцман', 'callback_data' => 'Боцман поиск']
+                        ],
+                        [
+                            ['text' => 'Рефмеханик', 'callback_data' => 'Рефмеханик поиск']
+                        ],
+                        [
+                            ['text' => 'Кадет', 'callback_data' => 'Кадет поиск']
+                        ],
+                        [
+                            ['text' => 'Электромеханик', 'callback_data' => 'Электромеханик поиск']
+                        ],
+                        [
+                            ['text' => '👈 Вернуться к выбору категории', 'callback_data' => 'skillsFinder']
+                        ]
+                    ]
+                ]
+            ];
+            break;
+
         case 'stroitelstvoSkill-find':
             // Удаляем старое сообщение
             $user = $func['from']['id'];
@@ -20914,6 +24291,9 @@ if (isset($data['callback_query'])) {
                         ],
                         [
                             ['text' => 'Разнорабочий', 'callback_data' => 'Разнорабочий поиск']
+                        ],
+                        [
+                            ['text' => 'Дизайнер интерьеров', 'callback_data' => 'Дизайнер интерьеров поиск']
                         ],
                         [
                             ['text' => 'Помощник Архитектора', 'callback_data' => 'Помощник Архитектора поиск']
@@ -21320,6 +24700,83 @@ if (isset($data['callback_query'])) {
                 ]
             ];
             break;
+        case 'shop':
+            // Удаляем старое сообщение
+            $user = $func['from']['id'];
+            $send_data['message_id'] = $data['callback_query']['message']['message_id'];
+            $send_data['chat_id'] = $user;
+            sendTelegram('deleteMessage', $send_data);
+
+            $user = $func['from']['id'];
+
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins` FROM `MainInfo` WHERE userID='".$user."' "));
+
+            if ($userData['coins'] == "") {
+                $coins = 0;
+            }else{
+                $coins = $userData['coins'];
+            }
+
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            $method = 'sendMessage';
+
+            $send_data = [
+                'text' => "🛒 Магазин:\n У вас на счету:".$coins." монет",
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => 'Приватный аккаунт: ' . $privateAccountPrice. " монет", 'callback_data' => 'makeAccountPrivate'],
+                        ], 
+                        [
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]                    
+                    ]
+                ]
+            ];
+            break;
+            
+        case 'makeAccountPrivate':
+            $user = $func['from']['id'];
+            
+            $userData = mysqli_fetch_array(mysqli_query ($con, "SELECT `coins`,`isPrivate` FROM `MainInfo` WHERE userID='".$user."' "));
+            
+            //Узнаем цену услуги из таблицы в бд
+            $shopItemsPrice = mysqli_fetch_array(mysqli_query ($con, "SELECT `price` FROM `ShopItems` WHERE itemName= 'makeAccountPrivate'"));
+            $privateAccountPrice = $shopItemsPrice['price'];
+
+            if ($userData['coins'] == "") {
+                $currentCoins = 0;
+            }else{
+                $currentCoins = $userData['coins'];
+            }
+            
+            if($userData['isPrivate'] == 1){
+                $buyResult = "Ваш аккаунт уже приватный.";
+            }else if($privateAccountPrice > $currentCoins){
+                $buyResult = "Похоже,вам не хватает монет!";
+            }
+            else {
+                $newCoinsAmount = $currentCoins - $privateAccountPrice;
+                mysqli_query($con, "UPDATE `MainInfo` SET `isPrivate` = 1, `coins` = " . $newCoinsAmount . " WHERE userID = '".$user."' ");
+                $buyResult = "Теперь, ваш аккаунт приватный!";
+            }
+
+            $method = 'editMessageText';
+            $send_data = [
+                'text' => $buyResult,
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [
+                            ['text' => '👈 Потратить монеты', 'callback_data' => 'shop'],
+                            ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                        ]            
+                    ]
+                ]
+            ];
+            break; 
 
         default:
             $method = 'editMessageText';
@@ -21357,5 +24814,14 @@ function sendTelegram($method, $data, $headers = [])
     curl_close($curl);
     return (json_decode($result, 1) ? json_decode($result, 1) : $result);
 }
-
+function GetLastBotMessage($data_var){
+    if($data_var['message']){
+        if($data_var['message']['from']['id'] == BOTID){
+            return $data_var['message'];
+        }   
+    }else if($data_var['callback_query']['message']['from']['id'] == BOTID){
+        return $data_var['callback_query']['message'];
+    }   
+    return $lastBotMessage;
+}
 ?>
