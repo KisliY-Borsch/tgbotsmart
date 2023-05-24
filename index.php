@@ -690,24 +690,28 @@ if (strpos($data['callback_query']['data'], 'contactDemoProfile') !== false) {
     // Выдаем сообщение, что для связи с человеком нужно зарегистрироваться
     $response = [
         'chat_id' => $user,
-        'text' => "*Чтоб связаться с человеком, нужно зарегистрироваться*",
+        'caption' => "Чтобы найти других людей,сначала нужно зарегистрироваться\n_Начнем с добавления_ *местоположения*_, чтоб помогать находить людей из_ *твоего города*",
+        'photo' => curl_file_create("../tgBot/BotPic/post_338.jpg"),
         "parse_mode" => "Markdown",
         'reply_markup'=>json_encode([
             'inline_keyboard'=>[
                 [
-                    ['text' => 'Зарегистрироваться', 'callback_data' => 'demoReg1']
+                    ['text' => 'Поделиться геометкой', 'callback_data' => 'send1Geo2Automatically']
+                ],
+                [
+                    ['text' => 'Выбрать из списка', 'callback_data' => 'send3Geo4From5List']
                 ]
             ]
         ])
     ];
-    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendMessage');  
+    $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
     curl_setopt($ch, CURLOPT_POST, 1);  
     curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HEADER, false);
     curl_exec($ch);
     curl_close($ch);
-    return;
+    return;       
 }
 if ($data['callback_query']['data'] == "demoReg1") {
     $user = $func['from']['id'];
@@ -2962,11 +2966,7 @@ if ($data['message']['text']) {
     }
 
     else if ($track['whichMenu'] == "ОтправляетСообщение"){
-        // Удаляем сообщение, которое прислал пользователь
-        $send_data['message_id'] = $mesID;
-        $send_data['chat_id'] = $user;
-        sendTelegram('deleteMessage', $send_data);
-        mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToSend = '".$data['message']['text']."' WHERE userID = ".$user." ");
+        mysqli_query ($con, "UPDATE `TrackingMenu` SET mesToSend = '".$data['message']['text']."', rowsToDel = '".$mesID."' WHERE userID = ".$user." ");
     }
 
     else if ($track['whichMenu'] == "send3Geo4From5List"){
@@ -3080,174 +3080,211 @@ if (isset($data['message']['photo'])) {
             mysqli_query ($con, "UPDATE `TrackingMenu` SET whichMenu = '' WHERE userID = ".$user." ");
 
             // Получаем из БД все о пользователе
-        $user = $func['from']['id'];
-        $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto` FROM `MainInfo` WHERE userID='".$user."' ");
-        $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
-        $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
-        $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$user."' ");
-        $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
+            $user = $func['from']['id'];
+            $profCheck = mysqli_query ($con, "SELECT `name`, `surname`, `userAge`, `userPhoto` FROM `MainInfo` WHERE userID='".$user."' ");
+            $intsCheck = mysqli_query ($con, "SELECT `interest1`, `interest2`, `interest3`, `interest4`, `interest5`, `interest6` FROM `Interests` WHERE userID='".$user."' ");
+            $skillsCheck = mysqli_query ($con, "SELECT `s1`, `s2`, `s3`, `s4`, `s5`, `s6` FROM `Skills` WHERE userID='".$user."' ");
+            $needsCheck = mysqli_query ($con, "SELECT `n1`, `n2`, `n3`, `n4`, `n5`, `n6` FROM `Needs` WHERE userID='".$user."' ");
+            $socialCheck = mysqli_query ($con, "SELECT `inst`, `tiktok`, `viber`, `whatsapp`, `facebook`, `anotherSocials` FROM `Socials` WHERE userID='".$user."' ");
+                
+            $prof = mysqli_fetch_array($profCheck);
+            $skill = mysqli_fetch_row($skillsCheck);
+            $need = mysqli_fetch_row($needsCheck);
+            $int = mysqli_fetch_row($intsCheck);
+            $socials = mysqli_fetch_array($socialCheck);
+    
+            $msgText1 = "";
+            $msgText2 = "";
+            $msgText3 = "";
+    
+            if (!empty($skill)) {
+                $msgText1 = "\n🧑‍💻 <i>Мои навыки:</i> \n";
+                    // Выводим скиллы в правильном виде
+                foreach ($skill as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText1 .= "<b>" . trim($value) . "</b>\n";
+                    }
+                }
+            }
+    
+            if (!empty($need)) {
+                $msgText2 = "\n📝 <i>Мои ценности:</i> \n";
+                    // Выводим ценности в правильном виде
+                foreach ($need as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText2 .= "<b>" . trim($value) . "</b>\n";
+                    }
+                }
+            }    
             
-        $prof = mysqli_fetch_array($profCheck);
-        $skill = mysqli_fetch_row($skillsCheck);
-        $need = mysqli_fetch_row($needsCheck);
-        $int = mysqli_fetch_row($intsCheck);
-        $socials = mysqli_fetch_array($socialCheck);
-
-        $msgText1 = "";
-        $msgText2 = "";
-        $msgText3 = "";
-
-        if (!empty($skill)) {
-            $msgText1 = "\n🧑‍💻 <i>Мои навыки:</i> \n";
-                // Выводим скиллы в правильном виде
-            foreach ($skill as $key => $value) {
-                if ($key == 0 and !empty($value)) {
-                    $msgText1 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 1 and !empty($value)) {
-                    $msgText1 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 2 and !empty($value)) {
-                    $msgText1 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 3 and !empty($value)) {
-                    $msgText1 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 4 and !empty($value)) {
-                    $msgText1 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 5 and !empty($value)) {
-                    $msgText1 .= "<b>" . trim($value) . "</b>\n";
+            if (!empty($int)) {
+                $msgText3 = "\n🚲 <i>Мои интересы:</i> \n";
+                    // Выводим ценности в правильном виде
+                foreach ($int as $key => $value) {
+                    if ($key == 0 and !empty($value)) {
+                        $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 1 and !empty($value)) {
+                        $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 2 and !empty($value)) {
+                        $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 3 and !empty($value)) {
+                        $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 4 and !empty($value)) {
+                        $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+                    }
+                    if ($key == 5 and !empty($value)) {
+                        $msgText3 .= "<b>" . trim($value) . "</b>\n";
+                    }
                 }
             }
-        }
-
-        if (!empty($need)) {
-            $msgText2 = "\n📝 <i>Мои ценности:</i> \n";
-                // Выводим ценности в правильном виде
-            foreach ($need as $key => $value) {
-                if ($key == 0 and !empty($value)) {
-                    $msgText2 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 1 and !empty($value)) {
-                    $msgText2 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 2 and !empty($value)) {
-                    $msgText2 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 3 and !empty($value)) {
-                    $msgText2 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 4 and !empty($value)) {
-                    $msgText2 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 5 and !empty($value)) {
-                    $msgText2 .= "<b>" . trim($value) . "</b>\n";
-                }
+    
+            $soc = "";
+    
+            if (!empty($prof['userAge'])) {
+                $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
             }
-        }    
-        
-        if (!empty($int)) {
-            $msgText3 = "\n🚲 <i>Мои интересы:</i> \n";
-                // Выводим ценности в правильном виде
-            foreach ($int as $key => $value) {
-                if ($key == 0 and !empty($value)) {
-                    $msgText3 .= "\r\u{0031}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
+    
+            if (!empty($socials['inst'])) {
+                $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
+                if ($soc == "") {
+                    $soc = $inst;
+                }else{
+                    $soc .= ", ".$inst;
                 }
-                if ($key == 1 and !empty($value)) {
-                    $msgText3 .= "\r\u{0032}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 2 and !empty($value)) {
-                    $msgText3 .= "\r\u{0033}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 3 and !empty($value)) {
-                    $msgText3 .= "\r\u{0034}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 4 and !empty($value)) {
-                    $msgText3 .= "\r\u{0035}\u{FE0F}\u{20E3} <b>" . trim($value) . "</b>\n";
-                }
-                if ($key == 5 and !empty($value)) {
-                    $msgText3 .= "<b>" . trim($value) . "</b>\n";
-                }
-            }
-        }
-
-        $soc = "";
-
-        if (!empty($prof['userAge'])) {
-            $age = "\n<i>Возраст:</i> <b>".$prof['userAge']."</b>\n";
-        }
-
-        if (!empty($socials['inst'])) {
-            $inst = "<b><a href='https://www.instagram.com/".$socials['inst']."/'>Instagram</a></b>";
-            if ($soc == "") {
-                $soc = $inst;
             }else{
-                $soc .= ", ".$inst;
+                $inst = "";
             }
-        }else{
-            $inst = "";
-        }
-
-        if (!empty($socials['tiktok'])) {
-            $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
-            if ($soc == "") {
-                $soc = $tiktok;
+    
+            if (!empty($socials['tiktok'])) {
+                $tiktok = "<b><a href='https://www.tiktok.com/@".$socials['tiktok']."/'>Tik-Tok</a></b>";
+                if ($soc == "") {
+                    $soc = $tiktok;
+                }else{
+                    $soc .= ", ".$tiktok;
+                }
             }else{
-                $soc .= ", ".$tiktok;
+                $tiktok = "";
             }
-        }else{
-            $tiktok = "";
-        }
-
-        if (!empty($socials['facebook'])) {
-            $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
-            if ($soc == "") {
-                $soc = $facebook;
+    
+            if (!empty($socials['facebook'])) {
+                $facebook = "<b><a href='".$socials['facebook']."'>Facebook</a></b>";
+                if ($soc == "") {
+                    $soc = $facebook;
+                }else{
+                    $soc .= ", ".$facebook;
+                }
             }else{
-                $soc .= ", ".$facebook;
+                $facebook = "";
             }
-        }else{
-            $facebook = "";
-        }
-
-        if (!empty($socials['viber'])) {
-            $viber = "<b>Viber - ".$socials['viber']."</b>";
-            if ($soc == "") {
-                $soc = $viber;
+    
+            if (!empty($socials['viber'])) {
+                $viber = "<b>Viber - ".$socials['viber']."</b>";
+                if ($soc == "") {
+                    $soc = $viber;
+                }else{
+                    $soc .= ", ".$viber;
+                }
             }else{
-                $soc .= ", ".$viber;
+                $viber = "";
             }
-        }else{
-            $viber = "";
-        }
-
-        if (!empty($socials['whatsapp'])) {
-            $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
-            if ($soc == "") {
-                $soc = $whatsapp;
+    
+            if (!empty($socials['whatsapp'])) {
+                $whatsapp = "<b><a href='https://wa.me/".$socials['whatsapp']."/'>WhatsApp</a></b>";
+                if ($soc == "") {
+                    $soc = $whatsapp;
+                }else{
+                    $soc .= ", ".$whatsapp;
+                }
             }else{
-                $soc .= ", ".$whatsapp;
+                $whatsapp = "";
             }
-        }else{
-            $whatsapp = "";
-        }
-
-        if (!empty($socials['anotherSocials'])) {
-            $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
-            if ($soc == "") {
-                $soc = $anotherSocials;
+    
+            if (!empty($socials['anotherSocials'])) {
+                $anotherSocials = "<b><a href='".$socials['anotherSocials']."'>Другая</a></b>";
+                if ($soc == "") {
+                    $soc = $anotherSocials;
+                }else{
+                    $soc .= ", ".$anotherSocials;
+                }
             }else{
-                $soc .= ", ".$anotherSocials;
-            }
-        }else{
-            $anotherSocials = "";
-        }
-
-            $response = [
-                    'chat_id' => $user,
+                $anotherSocials = "";
+            }    
+    
+            if (empty($prof['userPhoto'])) {
+                $method = 'sendMessage';
+                $send_data = [
                     'text' => "😁 <b>Мой профиль\n\n".$prof['name']." ".$prof['surname']."</b>".$age.$msgText1.$msgText2.$msgText3."\n".$soc,
                     "parse_mode" => "html",
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [
+                                ['text' => '🤴 Личные данные', 'callback_data' => 'myNameAge']  
+                            ],
+                            [
+                                ['text' => '🧑‍💻 Мои навыки', 'callback_data' => 'mySkills']
+                            ],
+                            [
+                                ['text' => '🚲 Мои интересы', 'callback_data' => 'myInterests']
+                            ],
+                            [
+                                ['text' => '📝 Мои ценности', 'callback_data' => 'myNeeds']
+                            ],
+                            [
+                                ['text' => 'Мои соцсети', 'callback_data' => 'mySocial']
+                            ],
+                            [
+                                ['text' => '🗣 Реферальная ссылка', 'callback_data' => 'myAffiliate']
+                            ],
+                            [
+                                ['text' => '👈 Главное меню', 'callback_data' => 'mainMenu']
+                            ]
+                        ]
+                    ]
+                ];
+                $send_data['chat_id'] = $func['message']['chat']['id'];
+                $send_data['message_id'] = $func['message']['message_id'];
+                sendTelegram($method, $send_data);
+                return;
+            }else{
+                $response = [
+                    'chat_id' => $user,
+                    'caption' => "😁 <b>Мой профиль\n\n".$prof['name']." ".$prof['surname']."</b>".$age.$msgText1.$msgText2.$msgText3."\n".$soc,
+                    "parse_mode" => "html",
+                    'photo' => curl_file_create("../tgBot/userPhotos/".$prof['userPhoto']),
                     'reply_markup'=>json_encode([
                         'inline_keyboard'=>[
                             [
@@ -3275,14 +3312,15 @@ if (isset($data['message']['photo'])) {
                     ])
                 ];
                     
-            $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendMessage');  
-            curl_setopt($ch, CURLOPT_POST, 1);  
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HEADER, false);
-            curl_exec($ch);
-            curl_close($ch);
-            return;
+                $ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendPhoto');  
+                curl_setopt($ch, CURLOPT_POST, 1);  
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $response);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HEADER, false);
+                curl_exec($ch);
+                curl_close($ch);
+                return;
+            }
         }else{
             $send_data['message_id'] = $func['message_id'];
             $send_data['chat_id'] = $user;
@@ -5273,6 +5311,13 @@ if (isset($data['callback_query'])) {
         $send_data['chat_id'] = $user;
         sendTelegram('deleteMessage', $send_data);
 
+        // Удаляем сообщние, которое отправил пользователь
+        $msgCheck = mysqli_query($con,"SELECT `rowsToDel` FROM TrackingMenu WHERE userID='".$user."' ");
+        $msgIDtoDel  = mysqli_fetch_array($msgCheck);
+        $send_data['message_id'] = $msgIDtoDel['rowsToDel'];
+        $send_data['chat_id'] = $user;
+        sendTelegram('deleteMessage', $send_data);
+
         // Удаляем sendMesTo из сообщения, чтоб узнать id получателя
         $word = $data['callback_query']['data'];
         $word = preg_replace("/sendMesTo/i", "", $word);
@@ -5362,14 +5407,29 @@ if (isset($data['callback_query'])) {
         $word = preg_replace("/openMes/i", "", $word);
         $word = trim($word);
 
+        // Ставим статус сообщения в БД = 2
+        mysqli_query ($con, "UPDATE `Messages` SET status = '2' WHERE id='".$word."' ");
+
         // Получаем все данные по id отправленного сообщения
         $checkMesID = mysqli_query($con,"SELECT * FROM Messages WHERE id='".$word."' ");
         $mes = mysqli_fetch_array($checkMesID);
 
+        // Получаем еще 1 сообщение
+        $check1moremsg = mysqli_query($con,"SELECT * FROM Messages WHERE (sender='".$mes['recipient']."') AND (recipient='".$mes['sender']."') AND (id<'".$word."') ORDER BY id DESC");
+        $mes1more = mysqli_fetch_array($check1moremsg);
+
+        // Узнаем имя получателя
+        $checkName = mysqli_query($con,"SELECT * FROM MainInfo WHERE userID='".$mes1more['recipient']."' ");
+        $name = mysqli_fetch_array($checkName);
+
+        // Узнаем имя отправителя
+        $checkName1 = mysqli_query($con,"SELECT * FROM MainInfo WHERE userID='".$mes1more['sender']."' ");
+        $name1 = mysqli_fetch_array($checkName1);
+
         // Выводим сообщение для отправителя
         $method = 'sendMessage';
         $send_data = [
-            'text' => "*" . $mes['message'] . "*",
+            'text' => "_".$name1['name']."_*:\n- ".$mes1more['message']."\n\n*_".$name['name']."\n_*- " . $mes['message'] . "*",
             "parse_mode" => "Markdown",
             'reply_markup' => [
                 'inline_keyboard' => [
