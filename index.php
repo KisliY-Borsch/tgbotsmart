@@ -7,8 +7,8 @@ $data = json_decode(file_get_contents('php://input'), TRUE);
 $func = $data['callback_query'] ? $data['callback_query'] : $data['message'];
 
 // Важные константы
-define('TOKEN', '6029265853:AAFd8vC7iBY2RpOcr9w_o89UsPswCH9GZfo');
-define('BOTID', '6029265853');
+define('TOKEN', 'X:Y');
+define('BOTID', 'X');
 $lastBotMessage = GetLastBotMessage($data);
 // Записываем сообщение пользователя
 $message = mb_strtolower(($func['text'] ? $func['text'] : $func['data']),'utf-8');
